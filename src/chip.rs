@@ -2,6 +2,10 @@ pub fn nand(a: bool, b: bool) -> bool {
     !(a && b)
 }
 
+pub fn not(input: bool) -> bool {
+    nand(input, input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -15,5 +19,16 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(&(a, b), &out)| assert_eq!(nand(a, b), out));
+    }
+
+    #[test]
+    fn not_inverts_a_input() {
+        let inputs = [false, true];
+        let expected = [true, false];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(&input, &output)| assert_eq!(not(input), output));
     }
 }
