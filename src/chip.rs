@@ -6,6 +6,10 @@ pub fn not(input: bool) -> bool {
     nand(input, input)
 }
 
+pub fn and(a: bool, b: bool) -> bool {
+    not(nand(a, b))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -30,5 +34,16 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(&input, &output)| assert_eq!(not(input), output));
+    }
+
+    #[test]
+    fn and_returns_false_except_both_inputs_are_true() {
+        let inputs = [(false, false), (false, true), (true, false), (true, true)];
+        let expected = [false, false, false, true];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(&(a, b), &out)| assert_eq!(and(a, b), out));
     }
 }
