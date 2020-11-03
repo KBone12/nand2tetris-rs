@@ -15,7 +15,7 @@ pub fn or(a: bool, b: bool) -> bool {
 }
 
 pub fn xor(a: bool, b: bool) -> bool {
-    or(and(a, not(b)), and(not(a), b))
+    nand(nand(a, not(b)), nand(not(a), b))
 }
 
 pub fn mux(a: bool, b: bool, selector: bool) -> bool {
