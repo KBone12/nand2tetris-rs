@@ -2,6 +2,27 @@ pub fn nand(a: bool, b: bool) -> bool {
     !(a && b)
 }
 
+pub fn nand16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+    [
+        nand(a[0], b[0]),
+        nand(a[1], b[1]),
+        nand(a[2], b[2]),
+        nand(a[3], b[3]),
+        nand(a[4], b[4]),
+        nand(a[5], b[5]),
+        nand(a[6], b[6]),
+        nand(a[7], b[7]),
+        nand(a[8], b[8]),
+        nand(a[9], b[9]),
+        nand(a[10], b[10]),
+        nand(a[11], b[11]),
+        nand(a[12], b[12]),
+        nand(a[13], b[13]),
+        nand(a[14], b[14]),
+        nand(a[15], b[15]),
+    ]
+}
+
 pub fn not(input: bool) -> bool {
     nand(input, input)
 }
@@ -74,6 +95,63 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(&(a, b), &out)| assert_eq!(nand(a, b), out));
+    }
+
+    #[test]
+    fn nand16_returns_true_except_both_inputs_are_true() {
+        let inputs = [
+            ([false; 16], [false; 16]),
+            ([false; 16], [true; 16]),
+            ([true; 16], [false; 16]),
+            ([true; 16], [true; 16]),
+            (
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+        ];
+        let expected = [
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [
+                false, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b), &out)| assert_eq!(nand16(a, b), out));
     }
 
     #[test]
