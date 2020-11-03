@@ -27,12 +27,24 @@ pub fn not(input: bool) -> bool {
     nand(input, input)
 }
 
+pub fn not16(input: &[bool; 16]) -> [bool; 16] {
+    nand16(input, input)
+}
+
 pub fn and(a: bool, b: bool) -> bool {
     not(nand(a, b))
 }
 
+pub fn and16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+    not16(&nand16(a, b))
+}
+
 pub fn or(a: bool, b: bool) -> bool {
     nand(not(a), not(b))
+}
+
+pub fn or16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+    nand16(&not16(a), &not16(b))
 }
 
 pub fn or8way(input: &[bool; 8]) -> bool {
@@ -166,6 +178,31 @@ mod tests {
     }
 
     #[test]
+    fn not16_inverts_a_input() {
+        let inputs = [
+            [false; 16],
+            [true; 16],
+            [
+                true, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false,
+            ],
+        ];
+        let expected = [
+            [true; 16],
+            [false; 16],
+            [
+                false, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(input, &output)| assert_eq!(not16(input), output));
+    }
+
+    #[test]
     fn and_returns_false_except_both_inputs_are_true() {
         let inputs = [(false, false), (false, true), (true, false), (true, true)];
         let expected = [false, false, false, true];
@@ -177,6 +214,63 @@ mod tests {
     }
 
     #[test]
+    fn and16_returns_false_except_both_inputs_are_true() {
+        let inputs = [
+            ([false; 16], [false; 16]),
+            ([false; 16], [true; 16]),
+            ([true; 16], [false; 16]),
+            ([true; 16], [true; 16]),
+            (
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+        ];
+        let expected = [
+            [false; 16],
+            [false; 16],
+            [false; 16],
+            [true; 16],
+            [false; 16],
+            [false; 16],
+            [
+                true, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b), &out)| assert_eq!(and16(a, b), out));
+    }
+
+    #[test]
     fn or_returns_true_except_both_inputs_are_false() {
         let inputs = [(false, false), (false, true), (true, false), (true, true)];
         let expected = [false, true, true, true];
@@ -185,6 +279,69 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(&(a, b), &out)| assert_eq!(or(a, b), out));
+    }
+
+    #[test]
+    fn or16_returns_true_except_both_inputs_are_false() {
+        let inputs = [
+            ([false; 16], [false; 16]),
+            ([false; 16], [true; 16]),
+            ([true; 16], [false; 16]),
+            ([true; 16], [true; 16]),
+            (
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+        ];
+        let expected = [
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [
+                true, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false,
+            ],
+            [
+                true, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false,
+            ],
+            [
+                true, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b), &out)| assert_eq!(or16(a, b), out));
     }
 
     #[test]
