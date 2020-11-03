@@ -14,6 +14,19 @@ pub fn or(a: bool, b: bool) -> bool {
     nand(not(a), not(b))
 }
 
+pub fn or8way(input: &[bool; 8]) -> bool {
+    or(
+        or(
+            or(
+                or(or(or(or(input[0], input[1]), input[2]), input[3]), input[4]),
+                input[5],
+            ),
+            input[6],
+        ),
+        input[7],
+    )
+}
+
 pub fn xor(a: bool, b: bool) -> bool {
     nand(nand(a, not(b)), nand(not(a), b))
 }
@@ -72,6 +85,27 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(&(a, b), &out)| assert_eq!(or(a, b), out));
+    }
+
+    #[test]
+    fn or8way_returns_true_except_all_inputs_are_false() {
+        let inputs = [
+            [false; 8],
+            [false, false, false, false, false, false, false, true],
+            [false, false, false, false, false, false, true, false],
+            [false, false, false, false, false, true, false, false],
+            [false, false, false, false, true, false, false, false],
+            [false, false, false, true, false, false, false, false],
+            [false, false, true, false, false, false, false, false],
+            [false, true, false, false, false, false, false, false],
+            [true, false, false, false, false, false, false, false],
+        ];
+        let expected = [false, true, true, true, true, true, true, true, true];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(input, &output)| assert_eq!(or8way(input), output));
     }
 
     #[test]
