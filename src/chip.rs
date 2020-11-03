@@ -68,6 +68,67 @@ pub fn mux(a: bool, b: bool, selector: bool) -> bool {
     or(and(not(selector), a), and(selector, b))
 }
 
+pub fn mux16(a: &[bool; 16], b: &[bool; 16], selector: bool) -> [bool; 16] {
+    or16(&and16(&[not(selector); 16], a), &and16(&[selector; 16], b))
+}
+
+pub fn mux4way16(
+    a: &[bool; 16],
+    b: &[bool; 16],
+    c: &[bool; 16],
+    d: &[bool; 16],
+    s1: bool,
+    s0: bool,
+) -> [bool; 16] {
+    or16(
+        &or16(
+            &and16(&[and(not(s1), not(s0)); 16], a),
+            &and16(&[and(not(s1), s0); 16], b),
+        ),
+        &or16(
+            &and16(&[and(s1, not(s0)); 16], c),
+            &and16(&[and(s1, s0); 16], d),
+        ),
+    )
+}
+
+pub fn mux8way16(
+    a: &[bool; 16],
+    b: &[bool; 16],
+    c: &[bool; 16],
+    d: &[bool; 16],
+    e: &[bool; 16],
+    f: &[bool; 16],
+    g: &[bool; 16],
+    h: &[bool; 16],
+    s2: bool,
+    s1: bool,
+    s0: bool,
+) -> [bool; 16] {
+    or16(
+        &or16(
+            &or16(
+                &and16(&[and(not(s2), and(not(s1), not(s0))); 16], a),
+                &and16(&[and(not(s2), and(not(s1), s0)); 16], b),
+            ),
+            &or16(
+                &and16(&[and(not(s2), and(s1, not(s0))); 16], c),
+                &and16(&[and(not(s2), and(s1, s0)); 16], d),
+            ),
+        ),
+        &or16(
+            &or16(
+                &and16(&[and(s2, and(not(s1), not(s0))); 16], e),
+                &and16(&[and(s2, and(not(s1), s0)); 16], f),
+            ),
+            &or16(
+                &and16(&[and(s2, and(s1, not(s0))); 16], g),
+                &and16(&[and(s2, and(s1, s0)); 16], h),
+            ),
+        ),
+    )
+}
+
 pub fn dmux(input: bool, selector: bool) -> (bool, bool) {
     (and(input, not(selector)), and(input, selector))
 }
@@ -394,6 +455,202 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(&(a, b, s), &out)| assert_eq!(mux(a, b, s), out));
+    }
+
+    #[test]
+    fn mux16_selects_the_input() {
+        let inputs = [
+            ([false; 16], [false; 16], false),
+            ([false; 16], [true; 16], false),
+            ([true; 16], [false; 16], false),
+            ([false; 16], [true; 16], true),
+            ([true; 16], [false; 16], true),
+            ([true; 16], [true; 16], true),
+        ];
+        let expected = [
+            [false; 16],
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [false; 16],
+            [true; 16],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b, s), &out)| assert_eq!(mux16(a, b, *s), out));
+    }
+
+    #[test]
+    fn mux4way16_selects_the_input() {
+        let inputs = [
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (false, false),
+            ),
+            (
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (false, false),
+            ),
+            (
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                (false, true),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                (true, false),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                (true, true),
+            ),
+        ];
+        let expected = [[false; 16], [true; 16], [true; 16], [true; 16], [true; 16]];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b, c, d, (s1, s0)), &out)| {
+                assert_eq!(mux4way16(a, b, c, d, *s1, *s0), out)
+            });
+    }
+
+    #[test]
+    fn mux8way16_selects_the_input() {
+        let inputs = [
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (false, false, false),
+            ),
+            (
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (false, false, false),
+            ),
+            (
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (false, false, true),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (false, true, false),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (false, true, true),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                (true, false, false),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                [false; 16],
+                (true, false, true),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                [false; 16],
+                (true, true, false),
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [false; 16],
+                [true; 16],
+                (true, true, true),
+            ),
+        ];
+        let expected = [
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [true; 16],
+        ];
+
+        inputs.iter().zip(expected.iter()).for_each(
+            |((a, b, c, d, e, f, g, h, (s2, s1, s0)), &out)| {
+                assert_eq!(mux8way16(a, b, c, d, e, f, g, h, *s2, *s1, *s0), out)
+            },
+        );
     }
 
     #[test]
