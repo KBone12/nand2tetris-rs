@@ -12,6 +12,19 @@ pub fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
     (or(c1, c0), sum)
 }
 
+pub fn add16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+    let mut output = [false; 16];
+    let (c, s) = half_adder(a[15], b[15]);
+    let mut carry = c;
+    output[15] = s;
+    for i in 0..15 {
+        let (c, s) = full_adder(a[14 - i], b[14 - i], carry);
+        carry = c;
+        output[14 - i] = s;
+    }
+    output
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -54,5 +67,54 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(&(a, b, c), &expected)| assert_eq!(full_adder(a, b, c), expected));
+    }
+
+    #[test]
+    fn add16_adds_two_16bit_integers() {
+        let inputs = [
+            ([false; 16], [false; 16]),
+            ([false; 16], [true; 16]),
+            ([true; 16], [false; 16]),
+            ([true; 16], [true; 16]),
+            (
+                [
+                    false, true, false, true, false, true, false, true, false, true, false, true,
+                    false, true, false, true,
+                ],
+                [
+                    true, false, true, false, true, false, true, false, true, false, true, false,
+                    true, false, true, false,
+                ],
+            ),
+            (
+                [
+                    false, false, false, true, false, false, true, false, false, false, true, true,
+                    false, true, false, false,
+                ],
+                [
+                    true, false, false, true, true, false, false, false, false, true, true, true,
+                    false, true, true, false,
+                ],
+            ),
+        ];
+        let expected = [
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, false,
+            ],
+            [true; 16],
+            [
+                true, false, true, false, true, false, true, false, true, false, true, false, true,
+                false, true, false,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b), &out)| assert_eq!(add16(a, b), out));
     }
 }
