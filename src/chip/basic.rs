@@ -61,7 +61,8 @@ pub fn or8way(input: &[bool; 8]) -> bool {
 }
 
 pub fn xor(a: bool, b: bool) -> bool {
-    nand(nand(a, not(b)), nand(not(a), b))
+    let tmp = nand(a, b);
+    nand(nand(a, tmp), nand(tmp, b))
 }
 
 pub fn mux(a: bool, b: bool, selector: bool) -> bool {
