@@ -1,4 +1,4 @@
-use crate::chip::basic::{nand, not};
+use crate::chip::basic::{and16, nand, not, not16, or16};
 
 pub fn half_adder(a: bool, b: bool) -> (bool, bool) {
     // This is readable.
@@ -44,6 +44,36 @@ pub fn inc16(input: &[bool; 16]) -> [bool; 16] {
             false, false, false, false, false, false, false, false, false, false, false, false,
             false, false, false, true,
         ],
+    )
+}
+
+pub fn alu(
+    a: &[bool; 16],
+    b: &[bool; 16],
+    zero_a: bool,
+    negate_a: bool,
+    zero_b: bool,
+    negate_b: bool,
+    f: bool,
+    negate_output: bool,
+) -> [bool; 16] {
+    // This implementation is not optimal but readable.
+    let a = &and16(&[not(zero_a); 16], a);
+    let a = &or16(
+        &and16(&[not(negate_a); 16], a),
+        &and16(&[negate_a; 16], &not16(a)),
+    );
+    let b = &and16(&[not(zero_b); 16], b);
+    let b = &or16(
+        &and16(&[not(negate_b); 16], b),
+        &and16(&[negate_b; 16], &not16(b)),
+    );
+    let and = &and16(a, b);
+    let add = &add16(a, b);
+    let output = &or16(&and16(&[not(f); 16], and), &and16(&[f; 16], add));
+    or16(
+        &and16(&[not(negate_output); 16], output),
+        &and16(&[negate_output; 16], &not16(output)),
     )
 }
 
@@ -174,5 +204,279 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|(input, &out)| assert_eq!(inc16(input), out));
+    }
+
+    #[test]
+    fn alu_without_any_flags_outputs_and_of_both_inputs() {
+        let inputs = [
+            ([false; 16], [false; 16]),
+            ([false; 16], [true; 16]),
+            ([true; 16], [false; 16]),
+            ([true; 16], [true; 16]),
+            (
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+            ),
+        ];
+        let expected = [
+            [false; 16],
+            [false; 16],
+            [false; 16],
+            [true; 16],
+            [false; 16],
+            [false; 16],
+            [
+                true, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b), &out)| {
+                assert_eq!(alu(a, b, false, false, false, false, false, false), out)
+            });
+    }
+
+    #[test]
+    fn alu_with_f_outputs_sum_of_both_inputs() {
+        let inputs = [
+            ([false; 16], [false; 16]),
+            ([false; 16], [true; 16]),
+            ([true; 16], [false; 16]),
+            ([true; 16], [true; 16]),
+            (
+                [
+                    false, true, false, true, false, true, false, true, false, true, false, true,
+                    false, true, false, true,
+                ],
+                [
+                    true, false, true, false, true, false, true, false, true, false, true, false,
+                    true, false, true, false,
+                ],
+            ),
+            (
+                [
+                    false, false, false, true, false, false, true, false, false, false, true, true,
+                    false, true, false, false,
+                ],
+                [
+                    true, false, false, true, true, false, false, false, false, true, true, true,
+                    false, true, true, false,
+                ],
+            ),
+        ];
+        let expected = [
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, false,
+            ],
+            [true; 16],
+            [
+                true, false, true, false, true, false, true, false, true, false, true, false, true,
+                false, true, false,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b), &out)| {
+                assert_eq!(alu(a, b, false, false, false, false, true, false), out)
+            });
+    }
+
+    #[test]
+    fn alu_with_negate_output_inverts_the_output() {
+        let inputs = [
+            (
+                [false; 16],
+                [false; 16],
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+            ),
+            (
+                [false; 16],
+                [true; 16],
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+            ),
+            (
+                [true; 16],
+                [false; 16],
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+            ),
+            (
+                [true; 16], [true; 16], false, false, false, false, false, true,
+            ),
+            (
+                [false; 16],
+                [false; 16],
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+            ),
+            (
+                [false; 16],
+                [true; 16],
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+            ),
+            (
+                [true; 16],
+                [false; 16],
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+            ),
+            (
+                [true; 16], [true; 16], false, false, false, false, true, true,
+            ),
+        ];
+        let expected = [
+            [true; 16],
+            [true; 16],
+            [true; 16],
+            [false; 16],
+            [true; 16],
+            [false; 16],
+            [false; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b, za, na, zb, nb, f, no), &out)| {
+                assert_eq!(alu(a, b, *za, *na, *zb, *nb, *f, *no), out)
+            });
+    }
+
+    #[test]
+    fn alu_with_zero_flag_forces_the_input_zero() {
+        let inputs = [
+            ([false; 16], [false; 16], false, false),
+            ([false; 16], [false; 16], true, true),
+            ([false; 16], [true; 16], false, true),
+            ([false; 16], [true; 16], true, false),
+            ([true; 16], [false; 16], false, true),
+            ([true; 16], [false; 16], true, false),
+            ([true; 16], [true; 16], true, true),
+        ];
+        let expected = [
+            [false; 16],
+            [false; 16],
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [false; 16],
+            [false; 16],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b, za, zb), &out)| {
+                assert_eq!(alu(a, b, *za, false, *zb, false, true, false), out)
+            });
+    }
+
+    #[test]
+    fn alu_with_negate_flag_inverts_the_input() {
+        let inputs = [
+            ([false; 16], [false; 16], false, false),
+            ([false; 16], [false; 16], true, true),
+            ([false; 16], [true; 16], false, true),
+            ([false; 16], [true; 16], true, false),
+            ([true; 16], [false; 16], false, true),
+            ([true; 16], [false; 16], true, false),
+            ([true; 16], [true; 16], false, false),
+            ([true; 16], [true; 16], true, true),
+        ];
+        let expected = [
+            [false; 16],
+            [
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, false,
+            ],
+            [false; 16],
+            [
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, false,
+            ],
+            [
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, false,
+            ],
+            [false; 16],
+            [
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, false,
+            ],
+            [false; 16],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((a, b, na, nb), &out)| {
+                assert_eq!(alu(a, b, false, *na, false, *nb, true, false), out)
+            });
     }
 }
