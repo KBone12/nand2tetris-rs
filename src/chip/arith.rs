@@ -1,4 +1,4 @@
-use crate::chip::basic::{and16, nand, not, not16, or16};
+use crate::chip::basic::{and16, nand, not, not16, or, or16};
 
 pub fn half_adder(a: bool, b: bool) -> (bool, bool) {
     // This is readable.
@@ -56,7 +56,7 @@ pub fn alu(
     negate_b: bool,
     f: bool,
     negate_output: bool,
-) -> [bool; 16] {
+) -> ([bool; 16], bool, bool) {
     // This implementation is not optimal but readable.
     let a = &and16(&[not(zero_a); 16], a);
     let a = &or16(
@@ -68,13 +68,25 @@ pub fn alu(
         &and16(&[not(negate_b); 16], b),
         &and16(&[negate_b; 16], &not16(b)),
     );
-    let and = &and16(a, b);
-    let add = &add16(a, b);
-    let output = &or16(&and16(&[not(f); 16], and), &and16(&[f; 16], add));
-    or16(
+    let and_ab = &and16(a, b);
+    let add_ab = &add16(a, b);
+    let output = &or16(&and16(&[not(f); 16], and_ab), &and16(&[f; 16], add_ab));
+    let output = or16(
         &and16(&[not(negate_output); 16], output),
         &and16(&[negate_output; 16], &not16(output)),
-    )
+    );
+    let zero = not(or(
+        or(
+            or(or(output[0], output[1]), or(output[2], output[3])),
+            or(or(output[4], output[5]), or(output[6], output[7])),
+        ),
+        or(
+            or(or(output[8], output[9]), or(output[10], output[11])),
+            or(or(output[12], output[13]), or(output[14], output[15])),
+        ),
+    ));
+    let negate = output[0];
+    (output, zero, negate)
 }
 
 #[cfg(test)]
@@ -245,16 +257,20 @@ mod tests {
             ),
         ];
         let expected = [
-            [false; 16],
-            [false; 16],
-            [false; 16],
-            [true; 16],
-            [false; 16],
-            [false; 16],
-            [
-                true, false, false, false, false, false, false, false, false, false, false, false,
-                false, false, false, false,
-            ],
+            ([false; 16], true, false),
+            ([false; 16], true, false),
+            ([false; 16], true, false),
+            ([true; 16], false, true),
+            ([false; 16], true, false),
+            ([false; 16], true, false),
+            (
+                [
+                    true, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false,
+                ],
+                false,
+                true,
+            ),
         ];
 
         inputs
@@ -294,18 +310,26 @@ mod tests {
             ),
         ];
         let expected = [
-            [false; 16],
-            [true; 16],
-            [true; 16],
-            [
-                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
-                true, false,
-            ],
-            [true; 16],
-            [
-                true, false, true, false, true, false, true, false, true, false, true, false, true,
-                false, true, false,
-            ],
+            ([false; 16], true, false),
+            ([true; 16], false, true),
+            ([true; 16], false, true),
+            (
+                [
+                    true, true, true, true, true, true, true, true, true, true, true, true, true,
+                    true, true, false,
+                ],
+                false,
+                true,
+            ),
+            ([true; 16], false, true),
+            (
+                [
+                    true, false, true, false, true, false, true, false, true, false, true, false,
+                    true, false, true, false,
+                ],
+                false,
+                true,
+            ),
         ];
 
         inputs
@@ -387,17 +411,21 @@ mod tests {
             ),
         ];
         let expected = [
-            [true; 16],
-            [true; 16],
-            [true; 16],
-            [false; 16],
-            [true; 16],
-            [false; 16],
-            [false; 16],
-            [
-                false, false, false, false, false, false, false, false, false, false, false, false,
-                false, false, false, true,
-            ],
+            ([true; 16], false, true),
+            ([true; 16], false, true),
+            ([true; 16], false, true),
+            ([false; 16], true, false),
+            ([true; 16], false, true),
+            ([false; 16], true, false),
+            ([false; 16], true, false),
+            (
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, false, false, false, true,
+                ],
+                false,
+                false,
+            ),
         ];
 
         inputs
@@ -420,13 +448,13 @@ mod tests {
             ([true; 16], [true; 16], true, true),
         ];
         let expected = [
-            [false; 16],
-            [false; 16],
-            [false; 16],
-            [true; 16],
-            [true; 16],
-            [false; 16],
-            [false; 16],
+            ([false; 16], true, false),
+            ([false; 16], true, false),
+            ([false; 16], true, false),
+            ([true; 16], false, true),
+            ([true; 16], false, true),
+            ([false; 16], true, false),
+            ([false; 16], true, false),
         ];
 
         inputs
@@ -450,26 +478,42 @@ mod tests {
             ([true; 16], [true; 16], true, true),
         ];
         let expected = [
-            [false; 16],
-            [
-                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
-                true, false,
-            ],
-            [false; 16],
-            [
-                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
-                true, false,
-            ],
-            [
-                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
-                true, false,
-            ],
-            [false; 16],
-            [
-                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
-                true, false,
-            ],
-            [false; 16],
+            ([false; 16], true, false),
+            (
+                [
+                    true, true, true, true, true, true, true, true, true, true, true, true, true,
+                    true, true, false,
+                ],
+                false,
+                true,
+            ),
+            ([false; 16], true, false),
+            (
+                [
+                    true, true, true, true, true, true, true, true, true, true, true, true, true,
+                    true, true, false,
+                ],
+                false,
+                true,
+            ),
+            (
+                [
+                    true, true, true, true, true, true, true, true, true, true, true, true, true,
+                    true, true, false,
+                ],
+                false,
+                true,
+            ),
+            ([false; 16], true, false),
+            (
+                [
+                    true, true, true, true, true, true, true, true, true, true, true, true, true,
+                    true, true, false,
+                ],
+                false,
+                true,
+            ),
+            ([false; 16], true, false),
         ];
 
         inputs
