@@ -3,3 +3,4 @@
 
 ## 進行記録一覧
 1. [Project 1: Boolean Logic]({{ "project/1" | relative_url }})
+2. [Project 2: Boolean Arithmetic]({{ "project/2" | relative_url }})
