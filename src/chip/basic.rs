@@ -61,15 +61,27 @@ pub fn or8way(input: &[bool; 8]) -> bool {
 }
 
 pub fn xor(a: bool, b: bool) -> bool {
-    nand(nand(a, not(b)), nand(not(a), b))
+    let tmp = nand(a, b);
+    nand(nand(a, tmp), nand(tmp, b))
 }
 
 pub fn mux(a: bool, b: bool, selector: bool) -> bool {
-    or(and(not(selector), a), and(selector, b))
+    // Readable
+    // or(and(not(selector), a), and(selector, b))
+
+    // Optimal
+    nand(nand(not(selector), a), nand(selector, b))
 }
 
 pub fn mux16(a: &[bool; 16], b: &[bool; 16], selector: bool) -> [bool; 16] {
-    or16(&and16(&[not(selector); 16], a), &and16(&[selector; 16], b))
+    // Readable
+    // or16(&and16(&[not(selector); 16], a), &and16(&[selector; 16], b))
+
+    // Optimal
+    nand16(
+        &nand16(&[not(selector); 16], a),
+        &nand16(&[selector; 16], b),
+    )
 }
 
 pub fn mux4way16(
@@ -80,6 +92,8 @@ pub fn mux4way16(
     s1: bool,
     s0: bool,
 ) -> [bool; 16] {
+    // Readable
+    /*
     or16(
         &or16(
             &and16(&[and(not(s1), not(s0)); 16], a),
@@ -88,6 +102,19 @@ pub fn mux4way16(
         &or16(
             &and16(&[and(s1, not(s0)); 16], c),
             &and16(&[and(s1, s0); 16], d),
+        ),
+    )
+    */
+
+    // Optimal
+    or16(
+        &nand16(
+            &nand16(&[and(not(s1), not(s0)); 16], a),
+            &nand16(&[and(not(s1), s0); 16], b),
+        ),
+        &nand16(
+            &nand16(&[and(s1, not(s0)); 16], c),
+            &nand16(&[and(s1, s0); 16], d),
         ),
     )
 }
@@ -105,6 +132,8 @@ pub fn mux8way16(
     s1: bool,
     s0: bool,
 ) -> [bool; 16] {
+    // Readable
+    /*
     or16(
         &or16(
             &or16(
@@ -124,6 +153,31 @@ pub fn mux8way16(
             &or16(
                 &and16(&[and(s2, and(s1, not(s0))); 16], g),
                 &and16(&[and(s2, and(s1, s0)); 16], h),
+            ),
+        ),
+    )
+    */
+
+    // Optimal
+    or16(
+        &or16(
+            &nand16(
+                &nand16(&[and(not(s2), and(not(s1), not(s0))); 16], a),
+                &nand16(&[and(not(s2), and(not(s1), s0)); 16], b),
+            ),
+            &nand16(
+                &nand16(&[and(not(s2), and(s1, not(s0))); 16], c),
+                &nand16(&[and(not(s2), and(s1, s0)); 16], d),
+            ),
+        ),
+        &or16(
+            &nand16(
+                &nand16(&[and(s2, and(not(s1), not(s0))); 16], e),
+                &nand16(&[and(s2, and(not(s1), s0)); 16], f),
+            ),
+            &nand16(
+                &nand16(&[and(s2, and(s1, not(s0))); 16], g),
+                &nand16(&[and(s2, and(s1, s0)); 16], h),
             ),
         ),
     )
