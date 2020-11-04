@@ -1,4 +1,4 @@
-use crate::chip::basic::{and16, nand, not, not16, or, or16};
+use crate::chip::basic::{and16, mux16, nand, not, not16, or};
 
 pub fn half_adder(a: bool, b: bool) -> (bool, bool) {
     // This is readable.
@@ -57,24 +57,14 @@ pub fn alu(
     f: bool,
     negate_output: bool,
 ) -> ([bool; 16], bool, bool) {
-    // This implementation is not optimal but readable.
     let a = &and16(&[not(zero_a); 16], a);
-    let a = &or16(
-        &and16(&[not(negate_a); 16], a),
-        &and16(&[negate_a; 16], &not16(a)),
-    );
+    let a = &mux16(a, &not16(a), negate_a);
     let b = &and16(&[not(zero_b); 16], b);
-    let b = &or16(
-        &and16(&[not(negate_b); 16], b),
-        &and16(&[negate_b; 16], &not16(b)),
-    );
+    let b = &mux16(b, &not16(b), negate_b);
     let and_ab = &and16(a, b);
     let add_ab = &add16(a, b);
-    let output = &or16(&and16(&[not(f); 16], and_ab), &and16(&[f; 16], add_ab));
-    let output = or16(
-        &and16(&[not(negate_output); 16], output),
-        &and16(&[negate_output; 16], &not16(output)),
-    );
+    let output = &mux16(and_ab, add_ab, f);
+    let output = mux16(output, &not16(output), negate_output);
     let zero = not(or(
         or(
             or(or(output[0], output[1]), or(output[2], output[3])),
