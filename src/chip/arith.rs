@@ -25,6 +25,16 @@ pub fn add16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     output
 }
 
+pub fn inc16(input: &[bool; 16]) -> [bool; 16] {
+    add16(
+        input,
+        &[
+            false, false, false, false, false, false, false, false, false, false, false, false,
+            false, false, false, true,
+        ],
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,5 +126,41 @@ mod tests {
             .iter()
             .zip(expected.iter())
             .for_each(|((a, b), &out)| assert_eq!(add16(a, b), out));
+    }
+
+    #[test]
+    fn inc16_increments_an_input() {
+        let inputs = [
+            [false; 16],
+            [true; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true,
+            ],
+            [
+                false, false, false, false, false, false, false, false, false, false, true, false,
+                false, false, false, false,
+            ],
+        ];
+        let expected = [
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true,
+            ],
+            [false; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, true, false,
+            ],
+            [
+                false, false, false, false, false, false, false, false, false, false, true, false,
+                false, false, false, true,
+            ],
+        ];
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(input, &out)| assert_eq!(inc16(input), out));
     }
 }
