@@ -1,8 +1,13 @@
-use crate::chip::basic::{and, or, xor};
+use crate::chip::basic::{nand, not, or};
 
 pub fn half_adder(a: bool, b: bool) -> (bool, bool) {
-    // This implementation is not optimal but readable.
+    // This is the optimal.
+    let tmp = nand(a, b);
+    (not(tmp), nand(nand(a, tmp), nand(tmp, b)))
+    // This is readable.
+    /*
     (and(a, b), xor(a, b))
+    */
 }
 
 pub fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
