@@ -110,12 +110,12 @@ impl Bit {
     }
 }
 
-pub struct Bit16 {
+pub struct Register {
     load: bool,
     dff: Dff16,
 }
 
-impl Bit16 {
+impl Register {
     pub fn new() -> Self {
         Self {
             load: false,
@@ -143,37 +143,6 @@ impl Bit16 {
 
     pub fn set_clock(&mut self, clock: bool) {
         self.dff.set_clock(clock);
-    }
-}
-
-pub struct Register {
-    bits: Bit16,
-}
-
-impl Register {
-    pub fn new() -> Self {
-        Self { bits: Bit16::new() }
-    }
-
-    pub fn set_load(&mut self, load: bool) {
-        self.bits.set_load(load);
-    }
-
-    pub fn set_input(&mut self, input: &[bool; 16]) {
-        self.bits.set_input(input);
-    }
-
-    pub fn get_output(&self) -> [bool; 16] {
-        self.bits.get_output()
-    }
-
-    pub fn tick(&mut self) {
-        self.set_clock(true);
-        self.set_clock(false);
-    }
-
-    pub fn set_clock(&mut self, clock: bool) {
-        self.bits.set_clock(clock);
     }
 }
 
@@ -627,37 +596,6 @@ mod tests {
             .zip(expected.iter())
             .for_each(|(&(input, load), &output)| {
                 bit.set_load(load);
-                bit.set_input(input);
-                bit.tick();
-                assert_eq!(bit.get_output(), output);
-            });
-    }
-
-    #[test]
-    fn bit16_changes_the_output_when_load_flag_is_on() {
-        let inputs = [
-            ([false; 16], false),
-            ([false; 16], true),
-            ([true; 16], false),
-            ([true; 16], true),
-            ([false; 16], false),
-            ([false; 16], true),
-        ];
-        let expected = [
-            [false; 16],
-            [false; 16],
-            [false; 16],
-            [true; 16],
-            [true; 16],
-            [false; 16],
-        ];
-        let mut bit = Bit16::new();
-
-        inputs
-            .iter()
-            .zip(expected.iter())
-            .for_each(|((input, load), &output)| {
-                bit.set_load(*load);
                 bit.set_input(input);
                 bit.tick();
                 assert_eq!(bit.get_output(), output);
