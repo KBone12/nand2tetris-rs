@@ -23,6 +23,11 @@ impl Dff {
         self.output
     }
 
+    pub fn tick(&mut self) {
+        self.set_clock(true);
+        self.set_clock(false);
+    }
+
     pub fn set_clock(&mut self, clock: bool) {
         if !self.clock && clock {
             self.output = self.input;
@@ -54,6 +59,11 @@ impl Bit {
 
     pub fn get_output(&self) -> bool {
         self.dff.get_output()
+    }
+
+    pub fn tick(&mut self) {
+        self.set_clock(true);
+        self.set_clock(false);
     }
 
     pub fn set_clock(&mut self, clock: bool) {
@@ -109,8 +119,7 @@ mod tests {
             .for_each(|(&(input, load), &output)| {
                 bit.set_load(load);
                 bit.set_input(input);
-                bit.set_clock(true);
-                bit.set_clock(false);
+                bit.tick();
                 assert_eq!(bit.get_output(), output);
             });
     }
