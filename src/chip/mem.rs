@@ -71,6 +71,79 @@ impl Bit {
     }
 }
 
+pub struct Register {
+    bits: [Bit; 16],
+}
+
+impl Register {
+    pub fn new() -> Self {
+        Self {
+            bits: [
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+                Bit::new(),
+            ],
+        }
+    }
+
+    pub fn set_load(&mut self, load: bool) {
+        for i in 0..16 {
+            self.bits[i].set_load(load);
+        }
+    }
+
+    pub fn set_input(&mut self, input: &[bool; 16]) {
+        for i in 0..16 {
+            self.bits[i].set_input(input[i]);
+        }
+    }
+
+    pub fn get_output(&self) -> [bool; 16] {
+        [
+            self.bits[0].get_output(),
+            self.bits[1].get_output(),
+            self.bits[2].get_output(),
+            self.bits[3].get_output(),
+            self.bits[4].get_output(),
+            self.bits[5].get_output(),
+            self.bits[6].get_output(),
+            self.bits[7].get_output(),
+            self.bits[8].get_output(),
+            self.bits[9].get_output(),
+            self.bits[10].get_output(),
+            self.bits[11].get_output(),
+            self.bits[12].get_output(),
+            self.bits[13].get_output(),
+            self.bits[14].get_output(),
+            self.bits[15].get_output(),
+        ]
+    }
+
+    pub fn tick(&mut self) {
+        self.set_clock(true);
+        self.set_clock(false);
+    }
+
+    pub fn set_clock(&mut self, clock: bool) {
+        for i in 0..16 {
+            self.bits[i].set_clock(clock);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,6 +194,37 @@ mod tests {
                 bit.set_input(input);
                 bit.tick();
                 assert_eq!(bit.get_output(), output);
+            });
+    }
+
+    #[test]
+    fn register_changes_the_output_when_load_flag_is_on() {
+        let inputs = [
+            ([false; 16], false),
+            ([false; 16], true),
+            ([true; 16], false),
+            ([true; 16], true),
+            ([false; 16], false),
+            ([false; 16], true),
+        ];
+        let expected = [
+            [false; 16],
+            [false; 16],
+            [false; 16],
+            [true; 16],
+            [true; 16],
+            [false; 16],
+        ];
+        let mut register = Register::new();
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((input, load), &output)| {
+                register.set_load(*load);
+                register.set_input(input);
+                register.tick();
+                assert_eq!(register.get_output(), output);
             });
     }
 }
