@@ -1,4 +1,7 @@
-use crate::chip::basic::{mux, mux16};
+use crate::chip::{
+    arith::inc16,
+    basic::{mux, mux16},
+};
 
 pub struct Dff {
     input: bool,
@@ -482,6 +485,67 @@ impl Ram16k {
     }
 }
 
+pub struct Pc {
+    register: Register,
+    increment: bool,
+    load: bool,
+    reset: bool,
+}
+
+impl Pc {
+    pub fn new() -> Self {
+        let mut register = Register::new();
+        register.set_load(true);
+        Self {
+            register,
+            increment: false,
+            load: false,
+            reset: false,
+        }
+    }
+
+    pub fn set_increment(&mut self, increment: bool) {
+        self.increment = increment;
+    }
+
+    pub fn set_load(&mut self, load: bool) {
+        self.load = load;
+    }
+
+    pub fn set_reset(&mut self, reset: bool) {
+        self.reset = reset;
+    }
+
+    pub fn set_input(&mut self, input: &[bool; 16]) {
+        self.register.set_input(&mux16(
+            &mux16(
+                &mux16(
+                    &self.get_output(),
+                    &inc16(&self.get_output()),
+                    self.increment,
+                ),
+                input,
+                self.load,
+            ),
+            &[false; 16],
+            self.reset,
+        ));
+    }
+
+    pub fn get_output(&self) -> [bool; 16] {
+        self.register.get_output()
+    }
+
+    pub fn tick(&mut self) {
+        self.set_clock(true);
+        self.set_clock(false);
+    }
+
+    pub fn set_clock(&mut self, clock: bool) {
+        self.register.set_clock(clock);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -813,6 +877,147 @@ mod tests {
                 ram.set_input(input, address);
                 ram.tick();
                 assert_eq!(ram.get_output(), output);
+            });
+    }
+
+    #[test]
+    fn pc_increments_the_output() {
+        let inputs = [
+            ([false; 16], false, false, true),
+            ([false; 16], true, false, false),
+            ([false; 16], true, false, false),
+            ([false; 16], true, false, false),
+        ];
+        let expected = [
+            [false; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true,
+            ],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, true, false,
+            ],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, true, true,
+            ],
+        ];
+        let mut pc = Pc::new();
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((input, inc, load, reset), &output)| {
+                pc.set_reset(*reset);
+                pc.set_load(*load);
+                pc.set_increment(*inc);
+                pc.set_input(input);
+                pc.tick();
+                assert_eq!(pc.get_output(), output);
+            });
+    }
+
+    #[test]
+    fn pc_resets_the_output_with_reset_flag() {
+        let inputs = [
+            ([false; 16], false, false, true),
+            ([false; 16], true, false, false),
+            ([false; 16], true, false, true),
+            ([false; 16], true, false, false),
+        ];
+        let expected = [
+            [false; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true,
+            ],
+            [false; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true,
+            ],
+        ];
+        let mut pc = Pc::new();
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((input, inc, load, reset), &output)| {
+                pc.set_reset(*reset);
+                pc.set_load(*load);
+                pc.set_increment(*inc);
+                pc.set_input(input);
+                pc.tick();
+                assert_eq!(pc.get_output(), output);
+            });
+    }
+
+    #[test]
+    fn pc_loads_the_input_with_load_flag() {
+        let inputs = [
+            ([false; 16], false, false, true),
+            ([false; 16], true, false, false),
+            (
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, true, false, false, false,
+                ],
+                false,
+                true,
+                false,
+            ),
+            ([false; 16], false, false, false),
+            ([false; 16], true, false, false),
+            ([true; 16], true, true, true),
+            (
+                [
+                    false, false, false, false, false, false, false, false, false, false, false,
+                    false, true, false, false, false,
+                ],
+                false,
+                true,
+                false,
+            ),
+            ([true; 16], true, true, false),
+        ];
+        let expected = [
+            [false; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true,
+            ],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                true, false, false, false,
+            ],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                true, false, false, false,
+            ],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                true, false, false, true,
+            ],
+            [false; 16],
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                true, false, false, false,
+            ],
+            [true; 16],
+        ];
+        let mut pc = Pc::new();
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((input, inc, load, reset), &output)| {
+                pc.set_reset(*reset);
+                pc.set_load(*load);
+                pc.set_increment(*inc);
+                pc.set_input(input);
+                pc.tick();
+                assert_eq!(pc.get_output(), output);
             });
     }
 }
