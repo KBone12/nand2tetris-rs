@@ -174,9 +174,12 @@ impl Ram8 {
         }
     }
 
-    pub fn set_input(&mut self, input: &[bool; 16], address: &[bool; 3]) {
+    pub fn set_address(&mut self, address: &[bool; 3]) {
         self.address =
             (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
+    }
+
+    pub fn set_input(&mut self, input: &[bool; 16]) {
         self.registers[self.address].set_input(input);
     }
 
@@ -224,18 +227,18 @@ impl Ram64 {
         }
     }
 
-    pub fn set_input(&mut self, input: &[bool; 16], address: &[bool; 6]) {
-        self.address = (address[0] as usize) << 5
-            | (address[1] as usize) << 4
-            | (address[2] as usize) << 3
-            | (address[3] as usize) << 2
-            | (address[4] as usize) << 1
-            | (address[5] as usize);
-        self.rams[self.address >> 3].set_input(input, &[address[3], address[4], address[5]]);
+    pub fn set_address(&mut self, address: &[bool; 6]) {
+        self.address =
+            (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
+        self.rams[self.address].set_address(&[address[3], address[4], address[5]]);
+    }
+
+    pub fn set_input(&mut self, input: &[bool; 16]) {
+        self.rams[self.address].set_input(input);
     }
 
     pub fn get_output(&self) -> [bool; 16] {
-        self.rams[self.address >> 3].get_output()
+        self.rams[self.address].get_output()
     }
 
     pub fn tick(&mut self) {
@@ -278,26 +281,20 @@ impl Ram512 {
         }
     }
 
-    pub fn set_input(&mut self, input: &[bool; 16], address: &[bool; 9]) {
-        self.address = (address[0] as usize) << 8
-            | (address[1] as usize) << 7
-            | (address[2] as usize) << 6
-            | (address[3] as usize) << 5
-            | (address[4] as usize) << 4
-            | (address[5] as usize) << 3
-            | (address[6] as usize) << 2
-            | (address[7] as usize) << 1
-            | (address[8] as usize);
-        self.rams[self.address >> 6].set_input(
-            input,
-            &[
-                address[3], address[4], address[5], address[6], address[7], address[8],
-            ],
-        );
+    pub fn set_address(&mut self, address: &[bool; 9]) {
+        self.address =
+            (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
+        self.rams[self.address].set_address(&[
+            address[3], address[4], address[5], address[6], address[7], address[8],
+        ]);
+    }
+
+    pub fn set_input(&mut self, input: &[bool; 16]) {
+        self.rams[self.address].set_input(input);
     }
 
     pub fn get_output(&self) -> [bool; 16] {
-        self.rams[self.address >> 6].get_output()
+        self.rams[self.address].get_output()
     }
 
     pub fn tick(&mut self) {
@@ -340,37 +337,28 @@ impl Ram4k {
         }
     }
 
-    pub fn set_input(&mut self, input: &[bool; 16], address: &[bool; 12]) {
-        self.address = (address[0] as usize) << 11
-            | (address[1] as usize) << 10
-            | (address[2] as usize) << 9
-            | (address[3] as usize) << 8
-            | (address[4] as usize) << 7
-            | (address[5] as usize) << 6
-            | (address[6] as usize) << 5
-            | (address[7] as usize) << 4
-            | (address[8] as usize) << 3
-            | (address[9] as usize) << 2
-            | (address[10] as usize) << 1
-            | (address[11] as usize);
-        self.rams[self.address >> 9].set_input(
-            input,
-            &[
-                address[3],
-                address[4],
-                address[5],
-                address[6],
-                address[7],
-                address[8],
-                address[9],
-                address[10],
-                address[11],
-            ],
-        );
+    pub fn set_address(&mut self, address: &[bool; 12]) {
+        self.address =
+            (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
+        self.rams[self.address].set_address(&[
+            address[3],
+            address[4],
+            address[5],
+            address[6],
+            address[7],
+            address[8],
+            address[9],
+            address[10],
+            address[11],
+        ]);
+    }
+
+    pub fn set_input(&mut self, input: &[bool; 16]) {
+        self.rams[self.address].set_input(input);
     }
 
     pub fn get_output(&self) -> [bool; 16] {
-        self.rams[self.address >> 9].get_output()
+        self.rams[self.address].get_output()
     }
 
     pub fn tick(&mut self) {
@@ -404,42 +392,30 @@ impl Ram16k {
         }
     }
 
-    pub fn set_input(&mut self, input: &[bool; 16], address: &[bool; 14]) {
-        self.address = (address[0] as usize) << 13
-            | (address[1] as usize) << 12
-            | (address[2] as usize) << 11
-            | (address[3] as usize) << 10
-            | (address[4] as usize) << 9
-            | (address[5] as usize) << 8
-            | (address[6] as usize) << 7
-            | (address[7] as usize) << 6
-            | (address[8] as usize) << 5
-            | (address[9] as usize) << 4
-            | (address[10] as usize) << 3
-            | (address[11] as usize) << 2
-            | (address[12] as usize) << 1
-            | (address[13] as usize);
-        self.rams[self.address >> 12].set_input(
-            input,
-            &[
-                address[2],
-                address[3],
-                address[4],
-                address[5],
-                address[6],
-                address[7],
-                address[8],
-                address[9],
-                address[10],
-                address[11],
-                address[12],
-                address[13],
-            ],
-        );
+    pub fn set_address(&mut self, address: &[bool; 14]) {
+        self.address = (address[0] as usize) << 1 | address[1] as usize;
+        self.rams[self.address].set_address(&[
+            address[2],
+            address[3],
+            address[4],
+            address[5],
+            address[6],
+            address[7],
+            address[8],
+            address[9],
+            address[10],
+            address[11],
+            address[12],
+            address[13],
+        ]);
+    }
+
+    pub fn set_input(&mut self, input: &[bool; 16]) {
+        self.rams[self.address].set_input(input);
     }
 
     pub fn get_output(&self) -> [bool; 16] {
-        self.rams[self.address >> 12].get_output()
+        self.rams[self.address].get_output()
     }
 
     pub fn tick(&mut self) {
@@ -645,6 +621,9 @@ mod tests {
             ([true; 16], [true; 3], false),
             ([false; 16], [false; 3], true),
             ([false; 16], [true; 3], false),
+            ([true; 16], [false; 3], false),
+            ([true; 16], [true; 3], true),
+            ([true; 16], [false; 3], false),
         ];
         let expected = [
             [false; 16],
@@ -656,6 +635,9 @@ mod tests {
             [true; 16],
             [false; 16],
             [true; 16],
+            [false; 16],
+            [true; 16],
+            [false; 16],
         ];
         let mut ram = Ram8::new();
 
@@ -664,7 +646,8 @@ mod tests {
             .zip(expected.iter())
             .for_each(|((input, address, load), &output)| {
                 ram.set_load(*load);
-                ram.set_input(input, address);
+                ram.set_address(address);
+                ram.set_input(input);
                 ram.tick();
                 assert_eq!(ram.get_output(), output);
             });
@@ -701,7 +684,8 @@ mod tests {
             .zip(expected.iter())
             .for_each(|((input, address, load), &output)| {
                 ram.set_load(*load);
-                ram.set_input(input, address);
+                ram.set_address(address);
+                ram.set_input(input);
                 ram.tick();
                 assert_eq!(ram.get_output(), output);
             });
@@ -738,7 +722,8 @@ mod tests {
             .zip(expected.iter())
             .for_each(|((input, address, load), &output)| {
                 ram.set_load(*load);
-                ram.set_input(input, address);
+                ram.set_address(address);
+                ram.set_input(input);
                 ram.tick();
                 assert_eq!(ram.get_output(), output);
             });
@@ -775,7 +760,8 @@ mod tests {
             .zip(expected.iter())
             .for_each(|((input, address, load), &output)| {
                 ram.set_load(*load);
-                ram.set_input(input, address);
+                ram.set_address(address);
+                ram.set_input(input);
                 ram.tick();
                 assert_eq!(ram.get_output(), output);
             });
@@ -812,7 +798,8 @@ mod tests {
             .zip(expected.iter())
             .for_each(|((input, address, load), &output)| {
                 ram.set_load(*load);
-                ram.set_input(input, address);
+                ram.set_address(address);
+                ram.set_input(input);
                 ram.tick();
                 assert_eq!(ram.get_output(), output);
             });
