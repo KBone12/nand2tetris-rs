@@ -384,15 +384,53 @@ impl Ram4k {
     }
 }
 
+pub struct Ram8k {
+    rams: [Ram4k; 2],
+    address: usize,
+}
+
+impl Ram8k {
+    pub fn new() -> Self {
+        Self {
+            rams: [Ram4k::new(), Ram4k::new()],
+            address: 0,
+        }
+    }
+
+    pub fn get_output(&self) -> [bool; 16] {
+        self.rams[self.address].get_output()
+    }
+
+    pub fn tick(&mut self, address: &[bool; 13], load: bool, input: &[bool; 16]) {
+        self.address = address[0] as usize;
+        let ad = &[
+            address[1],
+            address[2],
+            address[3],
+            address[4],
+            address[5],
+            address[6],
+            address[7],
+            address[8],
+            address[9],
+            address[10],
+            address[11],
+            address[12],
+        ];
+        self.rams[0].tick(ad, and(not(address[0]), load), input);
+        self.rams[1].tick(ad, and(address[0], load), input);
+    }
+}
+
 pub struct Ram16k {
-    rams: [Ram4k; 4],
+    rams: [Ram8k; 2],
     address: usize,
 }
 
 impl Ram16k {
     pub fn new() -> Self {
         Self {
-            rams: [Ram4k::new(), Ram4k::new(), Ram4k::new(), Ram4k::new()],
+            rams: [Ram8k::new(), Ram8k::new()],
             address: 0,
         }
     }
@@ -402,8 +440,9 @@ impl Ram16k {
     }
 
     pub fn tick(&mut self, address: &[bool; 14], load: bool, input: &[bool; 16]) {
-        self.address = (address[0] as usize) << 1 | address[1] as usize;
+        self.address = address[0] as usize;
         let ad = &[
+            address[1],
             address[2],
             address[3],
             address[4],
@@ -417,10 +456,8 @@ impl Ram16k {
             address[12],
             address[13],
         ];
-        self.rams[0].tick(ad, and(and(not(address[0]), not(address[1])), load), input);
-        self.rams[1].tick(ad, and(and(not(address[0]), address[1]), load), input);
-        self.rams[2].tick(ad, and(and(address[0], not(address[1])), load), input);
-        self.rams[3].tick(ad, and(and(address[0], address[1]), load), input);
+        self.rams[0].tick(ad, and(not(address[0]), load), input);
+        self.rams[1].tick(ad, and(address[0], load), input);
     }
 }
 
@@ -687,6 +724,35 @@ mod tests {
             [false; 16],
         ];
         let mut ram = Ram4k::new();
+
+        inputs
+            .iter()
+            .zip(expected.iter())
+            .for_each(|((address, load, input), &output)| {
+                ram.tick(address, *load, input);
+                assert_eq!(ram.get_output(), output);
+            });
+    }
+
+    #[test]
+    fn ram8k_has_4096_registers() {
+        let inputs = [
+            ([false; 13], false, [false; 16]),
+            ([true; 13], false, [false; 16]),
+            ([false; 13], true, [true; 16]),
+            ([false; 13], true, [false; 16]),
+            ([true; 13], true, [true; 16]),
+            ([false; 13], false, [true; 16]),
+        ];
+        let expected = [
+            [false; 16],
+            [false; 16],
+            [true; 16],
+            [false; 16],
+            [true; 16],
+            [false; 16],
+        ];
+        let mut ram = Ram8k::new();
 
         inputs
             .iter()

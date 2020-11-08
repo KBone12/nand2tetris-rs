@@ -1,6 +1,6 @@
 use crate::chip::{
     basic::{and, mux16, not, or},
-    mem::{Ram16k, Ram4k, Register},
+    mem::{Ram16k, Ram8k, Register},
 };
 
 pub struct Memory {
@@ -8,7 +8,7 @@ pub struct Memory {
     load: bool,
     input: [bool; 16],
     ram: Ram16k,
-    screen: [Ram4k; 2],
+    screen: Ram8k,
     keyboard: Register,
 }
 
@@ -19,7 +19,7 @@ impl Memory {
             load: false,
             input: [false; 16],
             ram: Ram16k::new(),
-            screen: [Ram4k::new(), Ram4k::new()],
+            screen: Ram8k::new(),
             keyboard: Register::new(),
         }
     }
@@ -28,11 +28,7 @@ impl Memory {
         mux16(
             &self.ram.get_output(),
             &mux16(
-                &mux16(
-                    &self.screen[0].get_output(),
-                    &self.screen[1].get_output(),
-                    self.address[2],
-                ),
+                &self.screen.get_output(),
                 &self.keyboard.get_output(),
                 self.address[1],
             ),
@@ -74,8 +70,9 @@ impl Memory {
             and(not(address[0]), load),
             input,
         );
-        self.screen[0].tick(
+        self.screen.tick(
             &[
+                address[2],
                 address[3],
                 address[4],
                 address[5],
@@ -89,25 +86,7 @@ impl Memory {
                 address[13],
                 address[14],
             ],
-            and(and(and(address[0], not(address[1])), not(address[2])), load),
-            input,
-        );
-        self.screen[1].tick(
-            &[
-                address[3],
-                address[4],
-                address[5],
-                address[6],
-                address[7],
-                address[8],
-                address[9],
-                address[10],
-                address[11],
-                address[12],
-                address[13],
-                address[14],
-            ],
-            and(and(and(address[0], not(address[1])), address[2]), load),
+            and(and(address[0], not(address[1])), load),
             input,
         );
         self.keyboard
