@@ -1,5 +1,58 @@
-use crate::token::{Comp, Dest, Jump};
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Comp {
+    Zero,
+    One,
+    MinusOne,
+    D,
+    A,
+    M,
+    NotD,
+    NotA,
+    NotM,
+    MinusD,
+    MinusA,
+    MinusM,
+    DPlusOne,
+    APlusOne,
+    MPlusOne,
+    DMinusOne,
+    AMinusOne,
+    MMinusOne,
+    DPlusA,
+    DPlusM,
+    DMinusA,
+    AMinusD,
+    DMinusM,
+    MMinusD,
+    DAndA,
+    DAndM,
+    DOrA,
+    DOrM,
+}
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Dest {
+    M,
+    D,
+    DM,
+    A,
+    AM,
+    AD,
+    ADM,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Jump {
+    JGT,
+    JEQ,
+    JGE,
+    JLT,
+    JNE,
+    JLE,
+    JMP,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
     A {
         value: u16,
@@ -144,8 +197,8 @@ impl Instruction {
                         binary[8] = true;
                         binary[9] = false;
                     }
-                    Comp::DPlusA | Comp::APlusD | Comp::DPlusM | Comp::MPlusD => {
-                        binary[3] = *comp == Comp::DPlusM || *comp == Comp::MPlusD;
+                    Comp::DPlusA | Comp::DPlusM => {
+                        binary[3] = *comp == Comp::DPlusM;
                         binary[4] = false;
                         binary[5] = false;
                         binary[6] = false;
@@ -171,8 +224,8 @@ impl Instruction {
                         binary[8] = true;
                         binary[9] = true;
                     }
-                    Comp::DAndA | Comp::AAndD | Comp::DAndM | Comp::MAndD => {
-                        binary[3] = *comp == Comp::DAndM || *comp == Comp::MAndD;
+                    Comp::DAndA | Comp::DAndM => {
+                        binary[3] = *comp == Comp::DAndM;
                         binary[4] = false;
                         binary[5] = false;
                         binary[6] = false;
@@ -180,8 +233,8 @@ impl Instruction {
                         binary[8] = false;
                         binary[9] = false;
                     }
-                    Comp::DOrA | Comp::AOrD | Comp::DOrM | Comp::MOrD => {
-                        binary[3] = *comp == Comp::DOrM || *comp == Comp::MOrD;
+                    Comp::DOrA | Comp::DOrM => {
+                        binary[3] = *comp == Comp::DOrM;
                         binary[4] = false;
                         binary[5] = true;
                         binary[6] = false;

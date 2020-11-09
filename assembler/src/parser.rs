@@ -1,210 +1,212 @@
-use std::collections::VecDeque;
+use regex::Regex;
 
 use thiserror::Error;
 
-use crate::{instruction::Instruction, token::Token};
+use crate::instruction::{Comp, Dest, Instruction, Jump};
 
 #[derive(Debug, Error)]
 pub enum ParseError {
-    #[error("A-instruction's value should not be negative (value: {0})")]
-    NegativeAInstruction(i16),
+    #[error("{0} is too large")]
+    TooLargeNumber(String),
 
-    #[error("A-instruction's value is not found ({0:?})")]
-    InvalidAInstruction(Token),
+    #[error("Unknown comp ({0})")]
+    UnknownComp(String),
 
-    #[error("'=' is not found after 'dest'")]
-    NoEqualAfterDest,
-
-    #[error("'jump' is not found after ';'")]
-    NoJumpAfterSemicolon,
-
-    #[error("C-instruction's comp is not found ({0:?})")]
-    InvalidCInstruction(Token),
-
-    #[error("Syntax Error: {0:?}")]
-    InvalidSyntax(Token),
+    #[error("Syntax error: {0}")]
+    InvalidSyntax(String),
 }
 pub type Result<T> = std::result::Result<T, ParseError>;
 
-pub struct Parser;
-
-impl Parser {
-    pub fn parse(tokens: &[Token]) -> Result<Vec<Instruction>> {
-        let mut tokens: VecDeque<_> = tokens.iter().collect();
-        let mut instructions = Vec::new();
-        while let Some(token) = tokens.pop_front() {
-            let instruction = match token {
-                Token::AInst => {
-                    if let Some(token) = tokens.pop_front() {
-                        match token {
-                            Token::Immediate(value) => {
-                                if (value >> 15) & 1 == 1 {
-                                    return Err(ParseError::NegativeAInstruction(*value as i16));
-                                }
-                                Instruction::A { value: *value }
-                            }
-                            _ => {
-                                return Err(ParseError::InvalidAInstruction(token.clone()));
-                            }
-                        }
-                    } else {
-                        return Err(ParseError::InvalidAInstruction(token.clone()));
-                    }
-                }
-                Token::Comp(comp) => {
-                    if let Some(token) = tokens.pop_front() {
-                        match token {
-                            Token::Semicolon => {
-                                if let Some(token) = tokens.pop_front() {
-                                    match token {
-                                        Token::Jump(jump) => Instruction::C {
-                                            comp: comp.clone(),
-                                            dest: None,
-                                            jump: Some(jump.clone()),
-                                        },
-                                        _ => {
-                                            return Err(ParseError::NoJumpAfterSemicolon);
-                                        }
-                                    }
-                                } else {
-                                    return Err(ParseError::NoJumpAfterSemicolon);
-                                }
-                            }
-                            _ => {
-                                tokens.push_front(token);
-                                Instruction::C {
-                                    comp: comp.clone(),
-                                    dest: None,
-                                    jump: None,
-                                }
-                            }
-                        }
-                    } else {
-                        Instruction::C {
-                            comp: comp.clone(),
-                            dest: None,
-                            jump: None,
-                        }
-                    }
-                }
-                Token::Dest(dest) => {
-                    let token = tokens.pop_front();
-                    if matches!(token, Some(Token::Equal)) {
-                        if let Some(token) = tokens.pop_front() {
-                            match token {
-                                Token::Comp(comp) => {
-                                    if let Some(token) = tokens.pop_front() {
-                                        match token {
-                                            Token::Semicolon => {
-                                                if let Some(token) = tokens.pop_front() {
-                                                    match token {
-                                                        Token::Jump(jump) => Instruction::C {
-                                                            comp: comp.clone(),
-                                                            dest: Some(dest.clone()),
-                                                            jump: Some(jump.clone()),
-                                                        },
-                                                        _ => {
-                                                            return Err(
-                                                                ParseError::NoJumpAfterSemicolon,
-                                                            );
-                                                        }
-                                                    }
-                                                } else {
-                                                    return Err(ParseError::NoJumpAfterSemicolon);
-                                                }
-                                            }
-                                            _ => {
-                                                tokens.push_front(token);
-                                                Instruction::C {
-                                                    comp: comp.clone(),
-                                                    dest: Some(dest.clone()),
-                                                    jump: None,
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        Instruction::C {
-                                            comp: comp.clone(),
-                                            dest: Some(dest.clone()),
-                                            jump: None,
-                                        }
-                                    }
-                                }
-                                _ => {
-                                    return Err(ParseError::InvalidCInstruction(token.clone()));
-                                }
-                            }
-                        } else {
-                            return Err(ParseError::InvalidCInstruction(token.unwrap().clone()));
-                        }
-                    } else {
-                        return Err(ParseError::NoEqualAfterDest);
-                    }
-                }
-                _ => {
-                    return Err(ParseError::InvalidSyntax(token.clone()));
-                }
-            };
-            instructions.push(instruction);
+pub fn parse_line(line: &str) -> Result<Option<Instruction>> {
+    let line = line.trim();
+    let comment = Regex::new(r"([^(?://)]*)\s*//.*").unwrap();
+    let line = comment
+        .captures(line)
+        .and_then(|captured| captured.get(1).and_then(|matched| Some(matched.as_str())))
+        .unwrap_or(line);
+    let a_instruction = Regex::new(r"@\s*(?P<value>[[:alnum:]]+)\s*").unwrap();
+    let c_instruction = Regex::new(r"(?:(?P<dest>M|D|DM|MD|A|AM|MA|AD|DA|AMD|ADM|DAM|DMA|MAD|MDA)\s*=)?\s*(?P<comp>[^;]+)(?:;\s*(?P<jump>JGT|JEQ|JGE|JLT|JNE|JLE|JMP))?\s*").unwrap();
+    let num = Regex::new(r"\d+").unwrap();
+    if let Some(captures) = a_instruction.captures(line) {
+        let value = &captures["value"];
+        if num.is_match(value) {
+            value
+                .parse()
+                .map(|value| Some(Instruction::A { value }))
+                .map_err(|_| ParseError::TooLargeNumber(value.to_string()))
+        } else {
+            unimplemented!()
         }
-        Ok(instructions)
+    } else if let Some(captures) = c_instruction.captures(line) {
+        let dest = if let Some(dest) = captures.name("dest") {
+            let dest = dest.as_str();
+            let m = dest.contains("M");
+            let d = dest.contains("D");
+            let a = dest.contains("A");
+            if m && d && a {
+                Some(Dest::ADM)
+            } else if m && d {
+                Some(Dest::DM)
+            } else if m && a {
+                Some(Dest::AM)
+            } else if d && a {
+                Some(Dest::AD)
+            } else if m {
+                Some(Dest::M)
+            } else if d {
+                Some(Dest::D)
+            } else if a {
+                Some(Dest::A)
+            } else {
+                unreachable!()
+            }
+        } else {
+            None
+        };
+        let comp = captures["comp"].split_whitespace().collect::<String>();
+        let comp = match comp.as_str() {
+            "0" => Comp::Zero,
+            "1" => Comp::One,
+            "-1" => Comp::MinusOne,
+            "D" => Comp::D,
+            "A" => Comp::A,
+            "M" => Comp::M,
+            "!D" => Comp::NotD,
+            "!A" => Comp::NotA,
+            "!M" => Comp::NotM,
+            "-D" => Comp::MinusD,
+            "-A" => Comp::MinusA,
+            "-M" => Comp::MinusM,
+            "D+1" | "1+D" => Comp::DPlusOne,
+            "A+1" | "1+A" => Comp::APlusOne,
+            "M+1" | "1+M" => Comp::MPlusOne,
+            "D-1" => Comp::DMinusOne,
+            "A-1" => Comp::AMinusOne,
+            "M-1" => Comp::MMinusOne,
+            "D+A" | "A+D" => Comp::DPlusA,
+            "D+M" | "M+D" => Comp::DPlusM,
+            "D-A" => Comp::DMinusA,
+            "A-D" => Comp::AMinusD,
+            "D-M" => Comp::DMinusM,
+            "M-D" => Comp::MMinusD,
+            "D&A" | "A&D" => Comp::DAndA,
+            "D&M" | "M&D" => Comp::DAndM,
+            "D|A" | "A|D" => Comp::DOrA,
+            "D|M" | "M|D" => Comp::DOrM,
+            _ => return Err(ParseError::UnknownComp(comp.to_string())),
+        };
+        let jump = if let Some(jump) = captures.name("jump") {
+            let jump = jump.as_str();
+            match jump {
+                "JGT" => Some(Jump::JGT),
+                "JEQ" => Some(Jump::JEQ),
+                "JGE" => Some(Jump::JGE),
+                "JLT" => Some(Jump::JLT),
+                "JNE" => Some(Jump::JNE),
+                "JLE" => Some(Jump::JLE),
+                "JMP" => Some(Jump::JMP),
+                _ => unreachable!(),
+            }
+        } else {
+            None
+        };
+        Ok(Some(Instruction::C { dest, comp, jump }))
+    } else {
+        Err(ParseError::InvalidSyntax(line.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::{Comp, Dest, Jump};
 
     #[test]
     fn parser_accepts_non_negative_immediate_after_a_instruction() {
-        let tokens = [Token::AInst, Token::Immediate(13)];
-        let result = Parser::parse(&tokens);
+        let line = "    @13 // A = 13\n";
+        let result = parse_line(line);
         assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Some(Instruction::A { value: 13 }));
     }
 
     #[test]
     fn parser_denies_negative_immediate_after_a_instruction() {
-        let tokens = [Token::AInst, Token::Immediate(-1i16 as u16)];
-        let result = Parser::parse(&tokens);
+        let line = " @-1\n";
+        let result = parse_line(line);
         assert!(result.is_err());
     }
 
     #[test]
-    fn parser_accepts_c_instruction_without_dest_and_jump() {
-        let tokens = [Token::Comp(Comp::Zero)];
-        let result = Parser::parse(&tokens);
+    fn parser_accepts_minus_one() {
+        let line = "   -1 // Just negative";
+        let result = parse_line(line);
         assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(Instruction::C {
+                comp: Comp::MinusOne,
+                dest: None,
+                jump: None
+            })
+        );
+    }
+
+    #[test]
+    fn parser_accepts_c_instruction_without_dest_and_jump() {
+        let line = "     0";
+        let result = parse_line(line);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(Instruction::C {
+                comp: Comp::Zero,
+                dest: None,
+                jump: None
+            })
+        );
     }
 
     #[test]
     fn parser_accepts_c_instruction_with_dest() {
-        let tokens = [Token::Dest(Dest::D), Token::Equal, Token::Comp(Comp::One)];
-        let result = Parser::parse(&tokens);
+        let line = "  D =     1 // ; D=4 \n";
+        let result = parse_line(line);
         assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(Instruction::C {
+                comp: Comp::One,
+                dest: Some(Dest::D),
+                jump: None
+            })
+        );
     }
 
     #[test]
     fn parser_accepts_c_instruction_with_jump() {
-        let tokens = [
-            Token::Comp(Comp::One),
-            Token::Semicolon,
-            Token::Jump(Jump::JMP),
-        ];
-        let result = Parser::parse(&tokens);
+        let line = "1; JMP\n";
+        let result = parse_line(line);
         assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(Instruction::C {
+                comp: Comp::One,
+                dest: None,
+                jump: Some(Jump::JMP)
+            })
+        );
     }
 
     #[test]
     fn parser_accepts_c_instruction_with_dest_and_jump() {
-        let tokens = [
-            Token::Dest(Dest::M),
-            Token::Equal,
-            Token::Comp(Comp::One),
-            Token::Semicolon,
-            Token::Jump(Jump::JMP),
-        ];
-        let result = Parser::parse(&tokens);
+        let line = "M=1;JMP";
+        let result = parse_line(line);
         assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(Instruction::C {
+                comp: Comp::One,
+                dest: Some(Dest::M),
+                jump: Some(Jump::JMP)
+            })
+        );
     }
 }
