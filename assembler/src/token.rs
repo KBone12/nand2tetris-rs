@@ -1,4 +1,4 @@
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Comp {
     Zero,
     One,
@@ -36,7 +36,7 @@ pub enum Comp {
     MOrD,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Dest {
     M,
     D,
@@ -47,7 +47,7 @@ pub enum Dest {
     ADM,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Jump {
     JGT,
     JEQ,
@@ -58,12 +58,14 @@ pub enum Jump {
     JMP,
 }
 
+#[derive(Clone, Debug)]
 pub enum Token {
     AInst,
     Immediate(u16),
     Symbol { name: String },
     LInst { name: String },
-    CInst,
+    Equal,
+    Semicolon,
     Comp(Comp),
     Dest(Dest),
     Jump(Jump),
