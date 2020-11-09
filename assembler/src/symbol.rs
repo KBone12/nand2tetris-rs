@@ -1,5 +1,28 @@
 use std::collections::HashMap;
 
+use thiserror::Error;
+
+use crate::instruction::{Comp, Dest, Instruction, Jump};
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum SymbolInstruction {
+    AImmediate {
+        value: u16,
+    },
+    ASymbol {
+        symbol: String,
+    },
+    C {
+        comp: Comp,
+        dest: Option<Dest>,
+        jump: Option<Jump>,
+    },
+}
+
+#[derive(Debug, Error)]
+pub enum SymbolError {}
+pub type Result<T> = std::result::Result<T, SymbolError>;
+
 pub struct SymbolTable {
     table: HashMap<String, u16>,
     next_address: u16,
@@ -46,5 +69,22 @@ impl SymbolTable {
 
     pub fn insert_label(&mut self, name: &str, value: u16) {
         *self.table.entry(name.to_string()).or_insert(value) = value;
+    }
+
+    pub fn resolve_symbols(&self, instructions: &[SymbolInstruction]) -> Result<Vec<Instruction>> {
+        instructions
+            .iter()
+            .map(|instruction| match instruction {
+                SymbolInstruction::AImmediate { value } => Ok(Instruction::A { value: *value }),
+                SymbolInstruction::ASymbol { symbol } => Ok(Instruction::A {
+                    value: self.table[symbol],
+                }),
+                SymbolInstruction::C { comp, dest, jump } => Ok(Instruction::C {
+                    comp: comp.clone(),
+                    dest: dest.clone(),
+                    jump: jump.clone(),
+                }),
+            })
+            .collect()
     }
 }

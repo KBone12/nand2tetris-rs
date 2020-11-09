@@ -2,12 +2,18 @@ use regex::Regex;
 
 use thiserror::Error;
 
-use crate::instruction::{Comp, Dest, Instruction, Jump};
+use crate::{
+    instruction::{Comp, Dest, Jump},
+    symbol::{SymbolInstruction, SymbolTable},
+};
 
 #[derive(Debug, Error)]
 pub enum ParseError {
     #[error("{0} is too large")]
     TooLargeNumber(String),
+
+    #[error("{0} is an invalid symbol")]
+    InvalidSymbol(String),
 
     #[error("Unknown comp ({0})")]
     UnknownComp(String),
@@ -17,7 +23,7 @@ pub enum ParseError {
 }
 pub type Result<T> = std::result::Result<T, ParseError>;
 
-pub fn parse_line(line: &str) -> Result<Option<Instruction>> {
+pub fn parse_line(line: &str, symbols: &mut SymbolTable) -> Result<Option<SymbolInstruction>> {
     let line = line.trim();
     let comment = Regex::new(r"([^(?://)]*)\s*//.*").unwrap();
     let line = comment
@@ -32,10 +38,15 @@ pub fn parse_line(line: &str) -> Result<Option<Instruction>> {
         if num.is_match(value) {
             value
                 .parse()
-                .map(|value| Some(Instruction::A { value }))
+                .map(|value| Some(SymbolInstruction::AImmediate { value }))
                 .map_err(|_| ParseError::TooLargeNumber(value.to_string()))
+        } else if !value.starts_with(|c: char| c.is_digit(10)) {
+            symbols.insert_variable(value);
+            Ok(Some(SymbolInstruction::ASymbol {
+                symbol: value.to_string(),
+            }))
         } else {
-            unimplemented!()
+            return Err(ParseError::InvalidSymbol(value.to_string()));
         }
     } else if let Some(captures) = c_instruction.captures(line) {
         let dest = if let Some(dest) = captures.name("dest") {
@@ -110,7 +121,7 @@ pub fn parse_line(line: &str) -> Result<Option<Instruction>> {
         } else {
             None
         };
-        Ok(Some(Instruction::C { dest, comp, jump }))
+        Ok(Some(SymbolInstruction::C { dest, comp, jump }))
     } else {
         Err(ParseError::InvalidSyntax(line.to_string()))
     }
@@ -123,26 +134,32 @@ mod tests {
     #[test]
     fn parser_accepts_non_negative_immediate_after_a_instruction() {
         let line = "    @13 // A = 13\n";
-        let result = parse_line(line);
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Some(Instruction::A { value: 13 }));
+        assert_eq!(
+            result.unwrap(),
+            Some(SymbolInstruction::AImmediate { value: 13 })
+        );
     }
 
     #[test]
     fn parser_denies_negative_immediate_after_a_instruction() {
         let line = " @-1\n";
-        let result = parse_line(line);
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
         assert!(result.is_err());
     }
 
     #[test]
     fn parser_accepts_minus_one() {
         let line = "   -1 // Just negative";
-        let result = parse_line(line);
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),
-            Some(Instruction::C {
+            Some(SymbolInstruction::C {
                 comp: Comp::MinusOne,
                 dest: None,
                 jump: None
@@ -153,11 +170,12 @@ mod tests {
     #[test]
     fn parser_accepts_c_instruction_without_dest_and_jump() {
         let line = "     0";
-        let result = parse_line(line);
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),
-            Some(Instruction::C {
+            Some(SymbolInstruction::C {
                 comp: Comp::Zero,
                 dest: None,
                 jump: None
@@ -168,11 +186,12 @@ mod tests {
     #[test]
     fn parser_accepts_c_instruction_with_dest() {
         let line = "  D =     1 // ; D=4 \n";
-        let result = parse_line(line);
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),
-            Some(Instruction::C {
+            Some(SymbolInstruction::C {
                 comp: Comp::One,
                 dest: Some(Dest::D),
                 jump: None
@@ -183,11 +202,12 @@ mod tests {
     #[test]
     fn parser_accepts_c_instruction_with_jump() {
         let line = "1; JMP\n";
-        let result = parse_line(line);
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),
-            Some(Instruction::C {
+            Some(SymbolInstruction::C {
                 comp: Comp::One,
                 dest: None,
                 jump: Some(Jump::JMP)
@@ -198,14 +218,29 @@ mod tests {
     #[test]
     fn parser_accepts_c_instruction_with_dest_and_jump() {
         let line = "M=1;JMP";
-        let result = parse_line(line);
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),
-            Some(Instruction::C {
+            Some(SymbolInstruction::C {
                 comp: Comp::One,
                 dest: Some(Dest::M),
                 jump: Some(Jump::JMP)
+            })
+        );
+    }
+
+    #[test]
+    fn parser_accepts_a_instruction_with_symbol() {
+        let line = "@i";
+        let mut symbols = SymbolTable::new();
+        let result = parse_line(line, &mut symbols);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(SymbolInstruction::ASymbol {
+                symbol: "i".to_string(),
             })
         );
     }
