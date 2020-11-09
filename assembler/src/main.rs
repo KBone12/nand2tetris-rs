@@ -1,3 +1,4 @@
-fn main() {
-    println!("Hello, world!");
-}
+mod instruction;
+mod token;
+
+fn main() {}
