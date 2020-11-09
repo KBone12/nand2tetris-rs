@@ -6,3 +6,4 @@
 2. [Project 2: Boolean Arithmetic]({{ "project/2" | relative_url }})
 3. [Project 3: Memory]({{ "project/3" | relative_url }})
 4. [Project 5: Computer Architecture]({{ "project/5" | relative_url }})
+5. [Project 6: Assembler]({{ "project/6" | relative_url }})
