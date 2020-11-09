@@ -34,9 +34,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .iter()
                 .map(|b| if *b { "1" } else { "0" })
                 .collect::<String>()
+                + "\n"
         })
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect::<String>();
     let file_name = file_name.with_extension("n2b");
     let mut file = BufWriter::new(File::create(file_name)?);
     file.write_all(binary.as_bytes())?;

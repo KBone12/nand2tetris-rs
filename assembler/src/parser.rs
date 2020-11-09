@@ -9,9 +9,6 @@ use crate::{
 
 #[derive(Debug, Error)]
 pub enum ParseError {
-    #[error("{0} is too large")]
-    TooLargeNumber(String),
-
     #[error("{0} is an invalid symbol")]
     InvalidSymbol(String),
 
@@ -29,44 +26,46 @@ pub fn parse<S: AsRef<str>>(
 ) -> Result<Vec<SymbolInstruction>> {
     let mut line_number = 0;
     lines.iter().filter_map(|line| {
-        let line = line.as_ref().trim();
-        let comment = Regex::new(r"([^(?://)]*)\s*//.*").unwrap();
-        let line = comment
-            .captures(line)
-            .and_then(|captured| captured.get(1).and_then(|matched| Some(matched.as_str())))
-            .unwrap_or(line);
+        let line = line.as_ref().trim().split("//").next().unwrap();
         if line.is_empty() {
             return None;
         }
-        let a_instruction = Regex::new(r"@\s*(?P<value>[[[:alnum:]]_.$:]+)\s*").unwrap();
         let c_instruction = Regex::new(r"(?:(?P<dest>M|D|DM|MD|A|AM|MA|AD|DA|AMD|ADM|DAM|DMA|MAD|MDA)\s*=)?\s*(?P<comp>[^;]+)(?:;\s*(?P<jump>JGT|JEQ|JGE|JLT|JNE|JLE|JMP))?\s*").unwrap();
-        let label = Regex::new(r"\(\s*(?P<label>[[[:alnum:]]_.$:]+)\s*\)\s*").unwrap();
-        let num = Regex::new(r"^\d+$").unwrap();
-        if let Some(captures) = a_instruction.captures(line) {
+        if line.starts_with("@") {
             line_number += 1;
-            let value = &captures["value"];
-            if num.is_match(value) {
-                value
-                    .parse()
-                    .map(|value| Some(SymbolInstruction::AImmediate { value }))
-                    .map_err(|_| ParseError::TooLargeNumber(value.to_string()))
-                    .transpose()
-            } else if !value.starts_with(|c: char| c.is_digit(10)) {
-                symbols.insert_variable(value);
-                Some(Ok(SymbolInstruction::ASymbol {
-                    symbol: value.to_string(),
-                }))
-            } else {
-                return Some(Err(ParseError::InvalidSymbol(value.to_string())));
-            }
-        } else if let Some(captures) = label.captures(line) {
-            let label = &captures["label"];
-            if !label.starts_with(|c: char| c.is_digit(10)) {
-                symbols.insert_label(label, line_number);
-                None
-            } else {
-                return Some(Err(ParseError::InvalidSymbol(label.to_string())));
-            }
+            let line = line.strip_prefix("@").unwrap();
+            line.split_whitespace().next().map_or(
+                Some(Err(ParseError::InvalidSyntax(line.to_string()))),
+                |value| {
+                    if value.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '$' || c == ':') {
+                        if let Ok(value) = value.parse() {
+                            Some(Ok(SymbolInstruction::AImmediate { value }))
+                        } else if !value.starts_with(|c: char| c.is_digit(10)) {
+                            symbols.insert_variable(value);
+                            Some(Ok(SymbolInstruction::ASymbol { symbol: value.to_string() }))
+                        } else {
+                            Some(Err(ParseError::InvalidSymbol(value.to_string())))
+                        }
+                    } else {
+                            Some(Err(ParseError::InvalidSymbol(value.to_string())))
+                    }
+                })
+        } else if line.starts_with("(") {
+            line.strip_prefix("(").unwrap().strip_suffix(")").map_or(
+                Some(Err(ParseError::InvalidSyntax(line.to_string()))),
+                |label| {
+                    let label = label.trim();
+                    if label.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '$' || c == ':') {
+                        if !label.starts_with(|c: char| c.is_digit(10)) {
+                            symbols.insert_label(label, line_number);
+                            None
+                        } else {
+                            Some(Err(ParseError::InvalidSymbol(label.to_string())))
+                        }
+                    } else {
+                        Some(Err(ParseError::InvalidSymbol(label.to_string())))
+                    }
+                })
         } else if let Some(captures) = c_instruction.captures(line) {
             line_number += 1;
             let dest = if let Some(dest) = captures.name("dest") {
