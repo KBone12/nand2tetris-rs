@@ -70,7 +70,7 @@ impl Instruction {
             Self::A { value } => {
                 let mut binary = [false; 16];
                 for i in 0..16 {
-                    binary[i] = (value >> i) & 1 == 1;
+                    binary[15 - i] = (value >> i) & 1 == 1;
                 }
                 binary
             }

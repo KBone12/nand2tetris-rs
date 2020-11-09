@@ -35,10 +35,13 @@ pub fn parse<S: AsRef<str>>(
             .captures(line)
             .and_then(|captured| captured.get(1).and_then(|matched| Some(matched.as_str())))
             .unwrap_or(line);
-        let a_instruction = Regex::new(r"@\s*(?P<value>[[:alnum:]]+)\s*").unwrap();
+        if line.is_empty() {
+            return None;
+        }
+        let a_instruction = Regex::new(r"@\s*(?P<value>[[[:alnum:]]_.$:]+)\s*").unwrap();
         let c_instruction = Regex::new(r"(?:(?P<dest>M|D|DM|MD|A|AM|MA|AD|DA|AMD|ADM|DAM|DMA|MAD|MDA)\s*=)?\s*(?P<comp>[^;]+)(?:;\s*(?P<jump>JGT|JEQ|JGE|JLT|JNE|JLE|JMP))?\s*").unwrap();
-        let label = Regex::new(r"\(\s*(?P<label>[[:alnum:]]+)\s*\)\s*").unwrap();
-        let num = Regex::new(r"\d+").unwrap();
+        let label = Regex::new(r"\(\s*(?P<label>[[[:alnum:]]_.$:]+)\s*\)\s*").unwrap();
+        let num = Regex::new(r"^\d+$").unwrap();
         if let Some(captures) = a_instruction.captures(line) {
             line_number += 1;
             let value = &captures["value"];
