@@ -28,7 +28,7 @@ async fn run() {
     let window = WindowBuilder::new()
         .with_title("Nand2Tetris")
         .with_resizable(false)
-        .with_inner_size(LogicalSize::new(800, 400))
+        .with_inner_size(LogicalSize::new(512, 256))
         .with_visible(true)
         .build(&event_loop)
         .unwrap();
@@ -61,7 +61,13 @@ async fn run() {
         device.create_shader_module(wgpu::include_spirv!("../shader/main.vert.spv"));
     let fragment_shader =
         device.create_shader_module(wgpu::include_spirv!("../shader/main.frag.spv"));
-    let vertices = [[-0.5f32, -0.5], [-0.5, 0.5], [0.5, -0.5], [0.5, 0.5]];
+    // let vertices = [[-0.5f32, -0.5], [-0.5, 0.5], [0.5, -0.5], [0.5, 0.5]];
+    let vertices = [
+        [-100.0f32, -100.0],
+        [-100.0, 100.0],
+        [100.0, -100.0],
+        [100.0, 100.0],
+    ];
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
         label: Some("vertex buffer"),
         contents: &vertices
@@ -74,15 +80,26 @@ async fn run() {
 
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         label: Some("bind group layout"),
-        entries: &[BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStage::FRAGMENT,
-            ty: BindingType::UniformBuffer {
-                dynamic: false,
-                min_binding_size: BufferSize::new(4),
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::VERTEX,
+                ty: BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: BufferSize::new(4 * 2),
+                },
+                count: None,
             },
-            count: None,
-        }],
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: BufferSize::new(4),
+                },
+                count: None,
+            },
+        ],
     });
     let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: Some("pipeline layout"),
@@ -90,8 +107,14 @@ async fn run() {
         push_constant_ranges: &[],
     });
 
-    let uniform_buffer = device.create_buffer(&BufferDescriptor {
-        label: Some("uniform buffer"),
+    let window_uniform_buffer = device.create_buffer(&BufferDescriptor {
+        label: Some("window uniform buffer"),
+        size: 4 * 2,
+        usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let color_uniform_buffer = device.create_buffer(&BufferDescriptor {
+        label: Some("color uniform buffer"),
         size: 4,
         usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
         mapped_at_creation: false,
@@ -99,10 +122,16 @@ async fn run() {
     let bind_group = device.create_bind_group(&BindGroupDescriptor {
         label: Some("bind group"),
         layout: &bind_group_layout,
-        entries: &[BindGroupEntry {
-            binding: 0,
-            resource: BindingResource::Buffer(uniform_buffer.slice(..)),
-        }],
+        entries: &[
+            BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::Buffer(window_uniform_buffer.slice(..)),
+            },
+            BindGroupEntry {
+                binding: 1,
+                resource: BindingResource::Buffer(color_uniform_buffer.slice(..)),
+            },
+        ],
     });
 
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -162,7 +191,15 @@ async fn run() {
             }
             */
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                queue.write_buffer(&uniform_buffer, 0, &1.0f32.to_ne_bytes());
+                queue.write_buffer(
+                    &window_uniform_buffer,
+                    0,
+                    &[swap_chain_descriptor.width, swap_chain_descriptor.height]
+                        .iter()
+                        .flat_map(|size| (*size as f32).to_ne_bytes().to_vec())
+                        .collect::<Vec<_>>(),
+                );
+                queue.write_buffer(&color_uniform_buffer, 0, &1.0f32.to_ne_bytes());
 
                 let frame = swap_chain.get_current_frame().unwrap().output;
                 let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {

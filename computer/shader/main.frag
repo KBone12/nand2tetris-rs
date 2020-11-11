@@ -2,7 +2,7 @@
 
 layout(location = 0) out vec4 color;
 
-layout(set = 0, binding = 0) uniform Color {
+layout(set = 0, binding = 1) uniform Color {
     float white;
 };
 
