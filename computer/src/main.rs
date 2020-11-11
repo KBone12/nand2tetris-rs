@@ -144,7 +144,7 @@ async fn run() {
 
     event_loop.run(move |event, _, control_flow| {
         // Take ownership
-        let _ = (&instance, &adapter, &bind_group, &render_pipeline);
+        let _ = (&instance, &adapter);
 
         *control_flow = ControlFlow::Wait;
         match event {
