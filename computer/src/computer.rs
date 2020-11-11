@@ -1,12 +1,12 @@
-use crate::{cpu::Cpu, memory::Memory, rom::Rom};
+use crate::{cpu::Cpu, memory::Memory, rom::Rom, screen::Screen};
 
-pub struct Computer {
+pub struct Computer<S: Screen> {
     rom: Rom,
     cpu: Cpu,
-    memory: Memory,
+    memory: Memory<S>,
 }
 
-impl Computer {
+impl<S: Screen> Computer<S> {
     pub fn new() -> Self {
         Self {
             rom: Rom::new(),
@@ -26,5 +26,9 @@ impl Computer {
         self.rom.set_address(&pc);
         let instruction = self.rom.get_output();
         self.cpu.tick(reset, &memory_data, &instruction);
+    }
+
+    pub fn screen(&self) -> &S {
+        self.memory.screen()
     }
 }

@@ -25,9 +25,11 @@ use computer::Computer;
 mod cpu;
 mod memory;
 mod rom;
+mod screen;
+use screen::wgpu::WgpuScreen as Screen;
 
 async fn run() {
-    let mut computer = Computer::new();
+    let mut computer = Computer::<Screen>::new();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -93,23 +95,11 @@ async fn run() {
             .as_slice(),
         usage: BufferUsage::VERTEX,
     });
-    let instance_colors = (0..256)
-        .map(|_i| {
-            (0..512)
-                // .map(|_j| if i < 128 { 0.0f32 } else { 1.0f32 })
-                .map(|_j| 1.0f32)
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-    let mut instance_colors = instance_colors
-        .iter()
-        .flatten()
-        .flat_map(|f| f.to_ne_bytes().to_vec())
-        .collect::<Vec<_>>();
-    let instance_color_buffer = device.create_buffer_init(&BufferInitDescriptor {
+    let instance_color_buffer = device.create_buffer(&BufferDescriptor {
         label: Some("instance color buffer"),
-        contents: instance_colors.as_slice(),
+        size: computer.screen().colors().len() as _,
         usage: BufferUsage::VERTEX | BufferUsage::COPY_DST,
+        mapped_at_creation: false,
     });
 
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -200,7 +190,6 @@ async fn run() {
     let mut update_count_start = previous;
     let mut frame_counter = 0;
     let mut frame_count_start = previous;
-    let mut color_counter = 0;
 
     computer.tick(true);
     queue.write_buffer(
@@ -255,27 +244,6 @@ async fn run() {
                 previous = now;
                 let mut count = 0;
                 while dt > duration_per_update {
-                    if color_counter < 256 {
-                        let zero = 0.0f32.to_ne_bytes();
-                        for i in 0..512 {
-                            instance_colors[color_counter * 512 * 4 + i * 4 + 0] = zero[0];
-                            instance_colors[color_counter * 512 * 4 + i * 4 + 1] = zero[1];
-                            instance_colors[color_counter * 512 * 4 + i * 4 + 2] = zero[2];
-                            instance_colors[color_counter * 512 * 4 + i * 4 + 3] = zero[3];
-                        }
-                        color_counter += 1;
-                    } else if color_counter < 512 {
-                        let one = 1.0f32.to_ne_bytes();
-                        for i in 0..512 {
-                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 0] = one[0];
-                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 1] = one[1];
-                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 2] = one[2];
-                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 3] = one[3];
-                        }
-                        color_counter += 1;
-                    } else {
-                        color_counter = 0;
-                    }
                     for _ in 0..(256 * 512 / 16) {
                         computer.tick(false);
                     }
@@ -295,7 +263,7 @@ async fn run() {
                 window.request_redraw();
             }
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                queue.write_buffer(&instance_color_buffer, 0, instance_colors.as_slice());
+                queue.write_buffer(&instance_color_buffer, 0, computer.screen().colors());
 
                 let frame = swap_chain.get_current_frame().unwrap().output;
                 let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {

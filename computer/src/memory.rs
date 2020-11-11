@@ -1,21 +1,24 @@
-use crate::chip::{
-    basic::{and, mux16, not, or},
-    mem::{Ram16k, Ram8k, Register},
+use crate::{
+    chip::{
+        basic::{and, mux16, not, or},
+        mem::{Ram16k, Register},
+    },
+    screen::Screen,
 };
 
-pub struct Memory {
+pub struct Memory<S: Screen> {
     address: [bool; 15],
     ram: Ram16k,
-    screen: Ram8k,
+    screen: S,
     keyboard: Register,
 }
 
-impl Memory {
+impl<S: Screen> Memory<S> {
     pub fn new() -> Self {
         Self {
             address: [false; 15],
             ram: Ram16k::new(),
-            screen: Ram8k::new(),
+            screen: S::new(),
             keyboard: Register::new(),
         }
     }
@@ -88,11 +91,16 @@ impl Memory {
         self.keyboard
             .tick(and(and(address[0], address[1]), load), input);
     }
+
+    pub fn screen(&self) -> &S {
+        &self.screen
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::screen::DummyScreen;
 
     #[test]
     fn memorys_can_read_and_write_data_with_clock() {
@@ -154,7 +162,7 @@ mod tests {
             [false; 16],
             [false; 16],
         ];
-        let mut mem = Memory::new();
+        let mut mem = Memory::<DummyScreen>::new();
 
         inputs
             .iter()
@@ -172,7 +180,7 @@ mod tests {
             true, true, false, false, false, false, false, false, false, false, false, false,
             false, false, true,
         ];
-        let mut mem = Memory::new();
+        let mut mem = Memory::<DummyScreen>::new();
 
         mem.tick(&address, false, &[false; 16]);
     }
