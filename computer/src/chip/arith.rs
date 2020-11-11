@@ -29,6 +29,7 @@ pub const fn add16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     let (c, s) = half_adder(a[15], b[15]);
     let mut carry = c;
     output[15] = s;
+    // Expand for-loop for const fn
     let (c, s) = full_adder(a[14 - 0], b[14 - 0], carry);
     carry = c;
     output[14 - 0] = s;
@@ -72,15 +73,7 @@ pub const fn add16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     carry = c;
     output[14 - 13] = s;
     let (_c, s) = full_adder(a[14 - 14], b[14 - 14], carry);
-    // carry = c;
     output[14 - 14] = s;
-    /*
-    for i in 0..15 {
-        let (c, s) = full_adder(a[14 - i], b[14 - i], carry);
-        carry = c;
-        output[14 - i] = s;
-    }
-    */
     output
 }
 

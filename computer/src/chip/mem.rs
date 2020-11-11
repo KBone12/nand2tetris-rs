@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::chip::{
     arith::inc16,
     basic::{mux, mux16, or},

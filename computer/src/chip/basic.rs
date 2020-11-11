@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub const fn nand(a: bool, b: bool) -> bool {
     !(a && b)
 }
