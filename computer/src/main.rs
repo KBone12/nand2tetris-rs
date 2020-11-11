@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BackendBit, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
@@ -12,18 +14,21 @@ use wgpu::{
 
 use winit::{
     dpi::LogicalSize,
-    event::{Event, WindowEvent},
+    event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
 mod chip;
 mod computer;
+use computer::Computer;
 mod cpu;
 mod memory;
 mod rom;
 
 async fn run() {
+    let mut computer = Computer::new();
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Nand2Tetris")
@@ -188,6 +193,11 @@ async fn run() {
     };
     let mut swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
 
+    let mut previous = Instant::now();
+    let mut dt = Duration::new(0, 0);
+    let mut frame_counter = 0;
+
+    computer.tick(true);
     queue.write_buffer(
         &window_uniform_buffer,
         0,
@@ -200,7 +210,7 @@ async fn run() {
         // Take ownership
         let _ = (&instance, &adapter);
 
-        *control_flow = ControlFlow::Wait;
+        *control_flow = ControlFlow::Poll;
         match event {
             Event::WindowEvent {
                 window_id,
@@ -219,11 +229,42 @@ async fn run() {
                         .collect::<Vec<_>>(),
                 );
             }
-            /*
+            Event::WindowEvent {
+                window_id,
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    },
+            } if window_id == window.id() => {
+                *control_flow = ControlFlow::Exit;
+            }
             Event::MainEventsCleared => {
+                println!("CHECK {:?}", dt);
+                while dt > Duration::from_secs_f64(1.0 / 60.0) {
+                    for _ in 0..(256 * 512 / 16) {
+                        computer.tick(false);
+                    }
+                    dt -= Duration::from_secs_f64(1.0 / 60.0);
+                    println!("CHECK2 {:?}", dt);
+                    frame_counter += 1;
+                    if frame_counter >= 100 {
+                        println!(
+                            "{}",
+                            frame_counter as f64 / (Instant::now() - previous).as_secs_f64()
+                        );
+                        frame_counter = 0;
+                    }
+                }
+                let now = Instant::now();
+                dt += now - previous;
+                previous = now;
                 window.request_redraw();
             }
-            */
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 queue.write_buffer(
                     &instance_color_buffer,
