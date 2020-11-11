@@ -63,7 +63,7 @@ async fn run() {
         device.create_shader_module(wgpu::include_spirv!("../shader/main.frag.spv"));
     let vertices = [[-0.5f32, -0.5], [-0.5, 0.5], [0.5, -0.5], [0.5, 0.5]];
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-        label: None,
+        label: Some("vertex buffer"),
         contents: &vertices
             .concat()
             .iter()
@@ -73,7 +73,7 @@ async fn run() {
     });
 
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: None,
+        label: Some("bind group layout"),
         entries: &[BindGroupLayoutEntry {
             binding: 0,
             visibility: ShaderStage::FRAGMENT,
@@ -85,19 +85,19 @@ async fn run() {
         }],
     });
     let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-        label: None,
+        label: Some("pipeline layout"),
         bind_group_layouts: &[&bind_group_layout],
         push_constant_ranges: &[],
     });
 
     let uniform_buffer = device.create_buffer(&BufferDescriptor {
-        label: None,
+        label: Some("uniform buffer"),
         size: 4,
         usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
         mapped_at_creation: false,
     });
     let bind_group = device.create_bind_group(&BindGroupDescriptor {
-        label: None,
+        label: Some("bind group"),
         layout: &bind_group_layout,
         entries: &[BindGroupEntry {
             binding: 0,
@@ -106,7 +106,7 @@ async fn run() {
     });
 
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-        label: None,
+        label: Some("render pipeline"),
         layout: Some(&pipeline_layout),
         vertex_stage: ProgrammableStageDescriptor {
             module: &vertex_shader,
@@ -165,8 +165,9 @@ async fn run() {
                 queue.write_buffer(&uniform_buffer, 0, &1.0f32.to_ne_bytes());
 
                 let frame = swap_chain.get_current_frame().unwrap().output;
-                let mut encoder =
-                    device.create_command_encoder(&CommandEncoderDescriptor { label: None });
+                let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+                    label: Some("command encoder"),
+                });
                 {
                     let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                         color_attachments: &[RenderPassColorAttachmentDescriptor {
