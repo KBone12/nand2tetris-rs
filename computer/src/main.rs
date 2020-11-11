@@ -61,13 +61,7 @@ async fn run() {
         device.create_shader_module(wgpu::include_spirv!("../shader/main.vert.spv"));
     let fragment_shader =
         device.create_shader_module(wgpu::include_spirv!("../shader/main.frag.spv"));
-    // let vertices = [[-0.5f32, -0.5], [-0.5, 0.5], [0.5, -0.5], [0.5, 0.5]];
-    let vertices = [
-        [-100.0f32, -100.0],
-        [-100.0, 100.0],
-        [100.0, -100.0],
-        [100.0, 100.0],
-    ];
+    let vertices = [[-0.5f32, 0.5], [-0.5, -0.5], [0.5, 0.5], [0.5, -0.5]];
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
         label: Some("vertex buffer"),
         contents: &vertices
@@ -77,29 +71,52 @@ async fn run() {
             .collect::<Vec<_>>(),
         usage: BufferUsage::VERTEX,
     });
+    let instance_positions = (0..256)
+        .map(|i| {
+            (0..512)
+                .map(|j| [j as f32 - 256.0 + 0.5, -(i as f32 - 128.0 + 0.5)])
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let instance_position_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        label: Some("instance position buffer"),
+        contents: instance_positions
+            .iter()
+            .flat_map(|i| i.iter().flatten())
+            .flat_map(|f| f.to_ne_bytes().to_vec())
+            .collect::<Vec<_>>()
+            .as_slice(),
+        usage: BufferUsage::VERTEX,
+    });
+    let instance_colors = (0..256)
+        .map(|i| {
+            (0..512)
+                .map(|_j| if i < 128 { 0.0f32 } else { 1.0f32 })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let instance_color_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        label: Some("instance color buffer"),
+        contents: instance_colors
+            .iter()
+            .flatten()
+            .flat_map(|f| f.to_ne_bytes().to_vec())
+            .collect::<Vec<_>>()
+            .as_slice(),
+        usage: BufferUsage::VERTEX | BufferUsage::COPY_DST,
+    });
 
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         label: Some("bind group layout"),
-        entries: &[
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStage::VERTEX,
-                ty: BindingType::UniformBuffer {
-                    dynamic: false,
-                    min_binding_size: BufferSize::new(4 * 2),
-                },
-                count: None,
+        entries: &[BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStage::VERTEX,
+            ty: BindingType::UniformBuffer {
+                dynamic: false,
+                min_binding_size: BufferSize::new(4 * 2),
             },
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStage::FRAGMENT,
-                ty: BindingType::UniformBuffer {
-                    dynamic: false,
-                    min_binding_size: BufferSize::new(4),
-                },
-                count: None,
-            },
-        ],
+            count: None,
+        }],
     });
     let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: Some("pipeline layout"),
@@ -113,25 +130,13 @@ async fn run() {
         usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
         mapped_at_creation: false,
     });
-    let color_uniform_buffer = device.create_buffer(&BufferDescriptor {
-        label: Some("color uniform buffer"),
-        size: 4,
-        usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
-        mapped_at_creation: false,
-    });
     let bind_group = device.create_bind_group(&BindGroupDescriptor {
         label: Some("bind group"),
         layout: &bind_group_layout,
-        entries: &[
-            BindGroupEntry {
-                binding: 0,
-                resource: BindingResource::Buffer(window_uniform_buffer.slice(..)),
-            },
-            BindGroupEntry {
-                binding: 1,
-                resource: BindingResource::Buffer(color_uniform_buffer.slice(..)),
-            },
-        ],
+        entries: &[BindGroupEntry {
+            binding: 0,
+            resource: BindingResource::Buffer(window_uniform_buffer.slice(..)),
+        }],
     });
 
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -151,11 +156,23 @@ async fn run() {
         depth_stencil_state: None,
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint16,
-            vertex_buffers: &[VertexBufferDescriptor {
-                stride: 4 * 2,
-                step_mode: InputStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0 => Float2],
-            }],
+            vertex_buffers: &[
+                VertexBufferDescriptor {
+                    stride: 4 * 2,
+                    step_mode: InputStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float2],
+                },
+                VertexBufferDescriptor {
+                    stride: 4 * 2,
+                    step_mode: InputStepMode::Instance,
+                    attributes: &wgpu::vertex_attr_array![1 => Float2],
+                },
+                VertexBufferDescriptor {
+                    stride: 4,
+                    step_mode: InputStepMode::Instance,
+                    attributes: &wgpu::vertex_attr_array![2 => Float],
+                },
+            ],
         },
         sample_count: 1,
         sample_mask: !0,
@@ -171,6 +188,14 @@ async fn run() {
     };
     let mut swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
 
+    queue.write_buffer(
+        &window_uniform_buffer,
+        0,
+        &[swap_chain_descriptor.width, swap_chain_descriptor.height]
+            .iter()
+            .flat_map(|size| (*size as f32).to_ne_bytes().to_vec())
+            .collect::<Vec<_>>(),
+    );
     event_loop.run(move |event, _, control_flow| {
         // Take ownership
         let _ = (&instance, &adapter);
@@ -184,13 +209,7 @@ async fn run() {
                 swap_chain_descriptor.width = size.width;
                 swap_chain_descriptor.height = size.height;
                 swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
-            }
-            /*
-            Event::MainEventsCleared => {
-                window.request_redraw();
-            }
-            */
-            Event::RedrawRequested(window_id) if window_id == window.id() => {
+
                 queue.write_buffer(
                     &window_uniform_buffer,
                     0,
@@ -199,7 +218,23 @@ async fn run() {
                         .flat_map(|size| (*size as f32).to_ne_bytes().to_vec())
                         .collect::<Vec<_>>(),
                 );
-                queue.write_buffer(&color_uniform_buffer, 0, &1.0f32.to_ne_bytes());
+            }
+            /*
+            Event::MainEventsCleared => {
+                window.request_redraw();
+            }
+            */
+            Event::RedrawRequested(window_id) if window_id == window.id() => {
+                queue.write_buffer(
+                    &instance_color_buffer,
+                    0,
+                    instance_colors
+                        .iter()
+                        .flatten()
+                        .flat_map(|f| f.to_ne_bytes().to_vec())
+                        .collect::<Vec<_>>()
+                        .as_slice(),
+                );
 
                 let frame = swap_chain.get_current_frame().unwrap().output;
                 let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
@@ -220,7 +255,9 @@ async fn run() {
                     render_pass.set_pipeline(&render_pipeline);
                     render_pass.set_bind_group(0, &bind_group, &[]);
                     render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                    render_pass.draw(0..(2 * 4), 0..1);
+                    render_pass.set_vertex_buffer(1, instance_position_buffer.slice(..));
+                    render_pass.set_vertex_buffer(2, instance_color_buffer.slice(..));
+                    render_pass.draw(0..(2 * 4), 0..(512 * 256));
                 }
 
                 queue.submit(Some(encoder.finish()));

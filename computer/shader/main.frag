@@ -1,11 +1,8 @@
 #version 450 core
 
+layout(location = 0) in float vertex_color;
 layout(location = 0) out vec4 color;
 
-layout(set = 0, binding = 1) uniform Color {
-    float white;
-};
-
 void main() {
-    color = vec4(white, white, white, 1.0);
+    color = vec4(vertex_color, vertex_color, vertex_color, 1.0);
 }
