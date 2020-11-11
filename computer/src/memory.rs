@@ -5,8 +5,6 @@ use crate::chip::{
 
 pub struct Memory {
     address: [bool; 15],
-    load: bool,
-    input: [bool; 16],
     ram: Ram16k,
     screen: Ram8k,
     keyboard: Register,
@@ -16,8 +14,6 @@ impl Memory {
     pub fn new() -> Self {
         Self {
             address: [false; 15],
-            load: false,
-            input: [false; 16],
             ram: Ram16k::new(),
             screen: Ram8k::new(),
             keyboard: Register::new(),
