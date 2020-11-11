@@ -94,20 +94,21 @@ async fn run() {
         usage: BufferUsage::VERTEX,
     });
     let instance_colors = (0..256)
-        .map(|i| {
+        .map(|_i| {
             (0..512)
-                .map(|_j| if i < 128 { 0.0f32 } else { 1.0f32 })
+                // .map(|_j| if i < 128 { 0.0f32 } else { 1.0f32 })
+                .map(|_j| 1.0f32)
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
+    let mut instance_colors = instance_colors
+        .iter()
+        .flatten()
+        .flat_map(|f| f.to_ne_bytes().to_vec())
+        .collect::<Vec<_>>();
     let instance_color_buffer = device.create_buffer_init(&BufferInitDescriptor {
         label: Some("instance color buffer"),
-        contents: instance_colors
-            .iter()
-            .flatten()
-            .flat_map(|f| f.to_ne_bytes().to_vec())
-            .collect::<Vec<_>>()
-            .as_slice(),
+        contents: instance_colors.as_slice(),
         usage: BufferUsage::VERTEX | BufferUsage::COPY_DST,
     });
 
@@ -195,7 +196,11 @@ async fn run() {
 
     let mut previous = Instant::now();
     let mut dt = Duration::new(0, 0);
+    let mut update_counter = 0;
+    let mut update_count_start = previous;
     let mut frame_counter = 0;
+    let mut frame_count_start = previous;
+    let mut color_counter = 0;
 
     computer.tick(true);
     queue.write_buffer(
@@ -244,38 +249,53 @@ async fn run() {
                 *control_flow = ControlFlow::Exit;
             }
             Event::MainEventsCleared => {
-                println!("CHECK {:?}", dt);
-                while dt > Duration::from_secs_f64(1.0 / 60.0) {
-                    for _ in 0..(256 * 512 / 16) {
-                        computer.tick(false);
-                    }
-                    dt -= Duration::from_secs_f64(1.0 / 60.0);
-                    println!("CHECK2 {:?}", dt);
-                    frame_counter += 1;
-                    if frame_counter >= 100 {
-                        println!(
-                            "{}",
-                            frame_counter as f64 / (Instant::now() - previous).as_secs_f64()
-                        );
-                        frame_counter = 0;
-                    }
-                }
+                let duration_per_update = Duration::from_secs_f64(1.0 / 60.0);
                 let now = Instant::now();
                 dt += now - previous;
                 previous = now;
+                let mut count = 0;
+                while dt > duration_per_update {
+                    if color_counter < 256 {
+                        let zero = 0.0f32.to_ne_bytes();
+                        for i in 0..512 {
+                            instance_colors[color_counter * 512 * 4 + i * 4 + 0] = zero[0];
+                            instance_colors[color_counter * 512 * 4 + i * 4 + 1] = zero[1];
+                            instance_colors[color_counter * 512 * 4 + i * 4 + 2] = zero[2];
+                            instance_colors[color_counter * 512 * 4 + i * 4 + 3] = zero[3];
+                        }
+                        color_counter += 1;
+                    } else if color_counter < 512 {
+                        let one = 1.0f32.to_ne_bytes();
+                        for i in 0..512 {
+                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 0] = one[0];
+                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 1] = one[1];
+                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 2] = one[2];
+                            instance_colors[(color_counter - 256) * 512 * 4 + i * 4 + 3] = one[3];
+                        }
+                        color_counter += 1;
+                    } else {
+                        color_counter = 0;
+                    }
+                    for _ in 0..(256 * 512 / 16) {
+                        computer.tick(false);
+                    }
+                    dt -= duration_per_update;
+                    update_counter += 1;
+                    count += 1;
+                    if update_counter >= 100 {
+                        println!(
+                            "UPS: {} ({})",
+                            update_counter as f64 / (now - update_count_start).as_secs_f64(),
+                            count,
+                        );
+                        update_counter = 0;
+                        update_count_start = now;
+                    }
+                }
                 window.request_redraw();
             }
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                queue.write_buffer(
-                    &instance_color_buffer,
-                    0,
-                    instance_colors
-                        .iter()
-                        .flatten()
-                        .flat_map(|f| f.to_ne_bytes().to_vec())
-                        .collect::<Vec<_>>()
-                        .as_slice(),
-                );
+                queue.write_buffer(&instance_color_buffer, 0, instance_colors.as_slice());
 
                 let frame = swap_chain.get_current_frame().unwrap().output;
                 let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
@@ -302,6 +322,17 @@ async fn run() {
                 }
 
                 queue.submit(Some(encoder.finish()));
+
+                frame_counter += 1;
+                if frame_counter >= 100 {
+                    let now = Instant::now();
+                    println!(
+                        "FPS: {}",
+                        frame_counter as f64 / (now - frame_count_start).as_secs_f64(),
+                    );
+                    frame_counter = 0;
+                    frame_count_start = now;
+                }
             }
             Event::WindowEvent {
                 window_id,

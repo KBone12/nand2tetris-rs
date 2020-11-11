@@ -1,8 +1,8 @@
-pub fn nand(a: bool, b: bool) -> bool {
+pub const fn nand(a: bool, b: bool) -> bool {
     !(a && b)
 }
 
-pub fn nand16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+pub const fn nand16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     [
         nand(a[0], b[0]),
         nand(a[1], b[1]),
@@ -23,31 +23,31 @@ pub fn nand16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     ]
 }
 
-pub fn not(input: bool) -> bool {
+pub const fn not(input: bool) -> bool {
     nand(input, input)
 }
 
-pub fn not16(input: &[bool; 16]) -> [bool; 16] {
+pub const fn not16(input: &[bool; 16]) -> [bool; 16] {
     nand16(input, input)
 }
 
-pub fn and(a: bool, b: bool) -> bool {
+pub const fn and(a: bool, b: bool) -> bool {
     not(nand(a, b))
 }
 
-pub fn and16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+pub const fn and16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     not16(&nand16(a, b))
 }
 
-pub fn or(a: bool, b: bool) -> bool {
+pub const fn or(a: bool, b: bool) -> bool {
     nand(not(a), not(b))
 }
 
-pub fn or16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+pub const fn or16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     nand16(&not16(a), &not16(b))
 }
 
-pub fn or8way(input: &[bool; 8]) -> bool {
+pub const fn or8way(input: &[bool; 8]) -> bool {
     or(
         or(
             or(
@@ -60,12 +60,12 @@ pub fn or8way(input: &[bool; 8]) -> bool {
     )
 }
 
-pub fn xor(a: bool, b: bool) -> bool {
+pub const fn xor(a: bool, b: bool) -> bool {
     let tmp = nand(a, b);
     nand(nand(a, tmp), nand(tmp, b))
 }
 
-pub fn mux(a: bool, b: bool, selector: bool) -> bool {
+pub const fn mux(a: bool, b: bool, selector: bool) -> bool {
     // Readable
     // or(and(not(selector), a), and(selector, b))
 
@@ -73,7 +73,7 @@ pub fn mux(a: bool, b: bool, selector: bool) -> bool {
     nand(nand(not(selector), a), nand(selector, b))
 }
 
-pub fn mux16(a: &[bool; 16], b: &[bool; 16], selector: bool) -> [bool; 16] {
+pub const fn mux16(a: &[bool; 16], b: &[bool; 16], selector: bool) -> [bool; 16] {
     // Readable
     // or16(&and16(&[not(selector); 16], a), &and16(&[selector; 16], b))
 
@@ -84,7 +84,7 @@ pub fn mux16(a: &[bool; 16], b: &[bool; 16], selector: bool) -> [bool; 16] {
     )
 }
 
-pub fn mux4way16(
+pub const fn mux4way16(
     a: &[bool; 16],
     b: &[bool; 16],
     c: &[bool; 16],
@@ -119,7 +119,7 @@ pub fn mux4way16(
     )
 }
 
-pub fn mux8way16(
+pub const fn mux8way16(
     a: &[bool; 16],
     b: &[bool; 16],
     c: &[bool; 16],
@@ -183,11 +183,11 @@ pub fn mux8way16(
     )
 }
 
-pub fn dmux(input: bool, selector: bool) -> (bool, bool) {
+pub const fn dmux(input: bool, selector: bool) -> (bool, bool) {
     (and(input, not(selector)), and(input, selector))
 }
 
-pub fn dmux4way(input: bool, s1: bool, s0: bool) -> (bool, bool, bool, bool) {
+pub const fn dmux4way(input: bool, s1: bool, s0: bool) -> (bool, bool, bool, bool) {
     (
         and(input, and(not(s1), not(s0))),
         and(input, and(not(s1), s0)),
@@ -196,7 +196,7 @@ pub fn dmux4way(input: bool, s1: bool, s0: bool) -> (bool, bool, bool, bool) {
     )
 }
 
-pub fn dmux8way(input: bool, s2: bool, s1: bool, s0: bool) -> [bool; 8] {
+pub const fn dmux8way(input: bool, s2: bool, s1: bool, s0: bool) -> [bool; 8] {
     [
         and(input, and(not(s2), and(not(s1), not(s0)))),
         and(input, and(not(s2), and(not(s1), s0))),

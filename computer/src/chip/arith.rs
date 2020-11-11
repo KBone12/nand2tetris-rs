@@ -1,6 +1,6 @@
 use crate::chip::basic::{and16, mux16, nand, not, not16, or};
 
-pub fn half_adder(a: bool, b: bool) -> (bool, bool) {
+pub const fn half_adder(a: bool, b: bool) -> (bool, bool) {
     // This is readable.
     /*
     (and(a, b), xor(a, b))
@@ -10,7 +10,7 @@ pub fn half_adder(a: bool, b: bool) -> (bool, bool) {
     (not(tmp), nand(nand(a, tmp), nand(tmp, b)))
 }
 
-pub fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
+pub const fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
     // This is readable.
     /*
     let (c0, sum) = half_adder(a, b);
@@ -24,20 +24,67 @@ pub fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
     (nand(nab, tmp), nand(nand(xor_ab, tmp), nand(tmp, c)))
 }
 
-pub fn add16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+pub const fn add16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
     let mut output = [false; 16];
     let (c, s) = half_adder(a[15], b[15]);
     let mut carry = c;
     output[15] = s;
+    let (c, s) = full_adder(a[14 - 0], b[14 - 0], carry);
+    carry = c;
+    output[14 - 0] = s;
+    let (c, s) = full_adder(a[14 - 1], b[14 - 1], carry);
+    carry = c;
+    output[14 - 1] = s;
+    let (c, s) = full_adder(a[14 - 2], b[14 - 2], carry);
+    carry = c;
+    output[14 - 2] = s;
+    let (c, s) = full_adder(a[14 - 3], b[14 - 3], carry);
+    carry = c;
+    output[14 - 3] = s;
+    let (c, s) = full_adder(a[14 - 4], b[14 - 4], carry);
+    carry = c;
+    output[14 - 4] = s;
+    let (c, s) = full_adder(a[14 - 5], b[14 - 5], carry);
+    carry = c;
+    output[14 - 5] = s;
+    let (c, s) = full_adder(a[14 - 6], b[14 - 6], carry);
+    carry = c;
+    output[14 - 6] = s;
+    let (c, s) = full_adder(a[14 - 7], b[14 - 7], carry);
+    carry = c;
+    output[14 - 7] = s;
+    let (c, s) = full_adder(a[14 - 8], b[14 - 8], carry);
+    carry = c;
+    output[14 - 8] = s;
+    let (c, s) = full_adder(a[14 - 9], b[14 - 9], carry);
+    carry = c;
+    output[14 - 9] = s;
+    let (c, s) = full_adder(a[14 - 10], b[14 - 10], carry);
+    carry = c;
+    output[14 - 10] = s;
+    let (c, s) = full_adder(a[14 - 11], b[14 - 11], carry);
+    carry = c;
+    output[14 - 11] = s;
+    let (c, s) = full_adder(a[14 - 12], b[14 - 12], carry);
+    carry = c;
+    output[14 - 12] = s;
+    let (c, s) = full_adder(a[14 - 13], b[14 - 13], carry);
+    carry = c;
+    output[14 - 13] = s;
+    let (_c, s) = full_adder(a[14 - 14], b[14 - 14], carry);
+    // carry = c;
+    output[14 - 14] = s;
+    /*
     for i in 0..15 {
         let (c, s) = full_adder(a[14 - i], b[14 - i], carry);
         carry = c;
         output[14 - i] = s;
     }
+    */
     output
 }
 
-pub fn inc16(input: &[bool; 16]) -> [bool; 16] {
+pub const fn inc16(input: &[bool; 16]) -> [bool; 16] {
     add16(
         input,
         &[
@@ -47,7 +94,7 @@ pub fn inc16(input: &[bool; 16]) -> [bool; 16] {
     )
 }
 
-pub fn alu(
+pub const fn alu(
     a: &[bool; 16],
     b: &[bool; 16],
     zero_a: bool,
