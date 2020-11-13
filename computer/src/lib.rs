@@ -1,5 +1,12 @@
 use crate::{cpu::Cpu, keyboard::Keyboard, memory::Memory, rom::Rom, screen::Screen};
 
+pub mod chip;
+pub mod cpu;
+pub mod keyboard;
+pub mod memory;
+pub mod rom;
+pub mod screen;
+
 pub struct Computer<S: Screen, K: Keyboard> {
     rom: Rom,
     cpu: Cpu,
