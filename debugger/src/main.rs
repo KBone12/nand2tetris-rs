@@ -7,7 +7,7 @@ use computer::{
 };
 
 fn bits_to_u16(bits: &[bool; 16]) -> u16 {
-    bits.iter().fold(0, |acc, x| (acc << 1) & (*x as u16))
+    bits.iter().fold(0, |acc, x| (acc << 1) | (*x as u16))
 }
 
 fn print_help() {
@@ -55,7 +55,14 @@ fn main() {
         std::io::stdin().read_line(&mut line).unwrap();
         match line.trim() {
             "help" => print_help(),
-            "show" => todo!(),
+            "show" => {
+                println!(
+                    "A: {}, D: {}, M: {}",
+                    bits_to_u16(&computer.a()),
+                    bits_to_u16(&computer.d()),
+                    bits_to_u16(&computer.m()),
+                );
+            }
             "next" => {
                 computer.tick(false);
             }
@@ -64,7 +71,7 @@ fn main() {
                 print!("Path to a ROM file > ");
                 std::io::stdout().flush().unwrap();
                 std::io::stdin().read_line(&mut path).unwrap();
-                match Rom::from_binary(path) {
+                match Rom::from_binary(path.trim()) {
                     Ok(rom) => {
                         computer.set_rom(rom);
                         computer.tick(true);

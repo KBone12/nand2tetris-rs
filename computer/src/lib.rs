@@ -46,11 +46,23 @@ impl<S: Screen, K: Keyboard> Computer<S, K> {
         self.rom = rom;
     }
 
-    pub fn screen(&self) -> &S {
-        self.memory.screen()
+    pub fn a(&self) -> [bool; 16] {
+        self.cpu.a()
+    }
+
+    pub fn d(&self) -> [bool; 16] {
+        self.cpu.d()
+    }
+
+    pub fn m(&self) -> [bool; 16] {
+        self.memory.get_output()
     }
 
     pub fn pc(&self) -> [bool; 16] {
         self.cpu.pc()
+    }
+
+    pub fn screen(&self) -> &S {
+        self.memory.screen()
     }
 }
