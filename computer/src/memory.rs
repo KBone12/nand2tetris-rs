@@ -50,6 +50,7 @@ impl<S: Screen, K: Keyboard> Memory<S, K> {
                 )
             )
         )));
+        self.address = *address;
         self.ram.tick(
             &[
                 address[1],
@@ -103,7 +104,7 @@ impl<S: Screen, K: Keyboard> Memory<S, K> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::screen::DummyScreen;
+    use crate::{keyboard::DummyKeyboard, screen::DummyScreen};
 
     #[test]
     fn memorys_can_read_and_write_data_with_clock() {
@@ -134,7 +135,7 @@ mod tests {
             (
                 [true; 16],
                 [
-                    true, true, false, false, false, false, false, false, false, false, false,
+                    true, false, true, false, false, false, false, false, false, false, false,
                     false, false, false, false,
                 ],
             ),
@@ -165,14 +166,20 @@ mod tests {
             [false; 16],
             [false; 16],
         ];
-        let mut mem = Memory::<DummyScreen>::new();
+        let mut mem = Memory::<DummyScreen, DummyKeyboard>::new();
 
         inputs
             .iter()
             .zip(expected.iter())
             .for_each(|((input, address), &output)| {
                 mem.tick(address, true, input);
-                assert_eq!(mem.get_output(), output);
+                assert_eq!(
+                    mem.get_output(),
+                    output,
+                    "input: {:?}, address: {:?}",
+                    input,
+                    address
+                );
             });
     }
 
@@ -183,7 +190,7 @@ mod tests {
             true, true, false, false, false, false, false, false, false, false, false, false,
             false, false, true,
         ];
-        let mut mem = Memory::<DummyScreen>::new();
+        let mut mem = Memory::<DummyScreen, DummyKeyboard>::new();
 
         mem.tick(&address, false, &[false; 16]);
     }
