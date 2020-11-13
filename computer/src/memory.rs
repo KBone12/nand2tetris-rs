@@ -1,6 +1,6 @@
 use crate::{
     chip::{
-        basic::{and, mux16, not, or},
+        basic::{and, mux16, not},
         mem::Ram16k,
     },
     keyboard::Keyboard,
@@ -37,19 +37,6 @@ impl<S: Screen, K: Keyboard> Memory<S, K> {
     }
 
     pub fn tick(&mut self, address: &[bool; 15], load: bool, input: &[bool; 16]) {
-        assert!(not(and(
-            and(address[0], address[1]),
-            or(
-                or(
-                    or(or(address[2], address[3]), or(address[4], address[5])),
-                    or(or(address[6], address[7]), or(address[8], address[9]))
-                ),
-                or(
-                    or(or(address[10], address[11]), or(address[12], address[13])),
-                    address[14]
-                )
-            )
-        )));
         self.address = *address;
         self.ram.tick(
             &[
