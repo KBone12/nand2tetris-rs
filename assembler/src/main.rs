@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 + "\n"
         })
         .collect::<String>();
-    let file_name = file_name.with_extension("n2b");
+    let file_name = file_name.with_extension("hack");
     let mut file = BufWriter::new(File::create(file_name)?);
     file.write_all(binary.as_bytes())?;
 
