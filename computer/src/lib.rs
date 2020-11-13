@@ -1,11 +1,14 @@
-use crate::{cpu::Cpu, keyboard::Keyboard, memory::Memory, rom::Rom, screen::Screen};
-
 pub mod chip;
 pub mod cpu;
+use cpu::Cpu;
 pub mod keyboard;
+use keyboard::Keyboard;
 pub mod memory;
+use memory::Memory;
 pub mod rom;
+use rom::Rom;
 pub mod screen;
+use screen::Screen;
 
 pub struct Computer<S: Screen, K: Keyboard> {
     rom: Rom,
@@ -45,5 +48,9 @@ impl<S: Screen, K: Keyboard> Computer<S, K> {
 
     pub fn screen(&self) -> &S {
         self.memory.screen()
+    }
+
+    pub fn pc(&self) -> [bool; 16] {
+        self.cpu.pc()
     }
 }
