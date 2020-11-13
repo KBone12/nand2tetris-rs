@@ -27,11 +27,13 @@ mod keyboard;
 use keyboard::winit::WinitKeyboard as Keyboard;
 mod memory;
 mod rom;
+use rom::Rom;
 mod screen;
 use screen::wgpu::WgpuScreen as Screen;
 
 async fn run() {
     let mut computer = Computer::<Screen, Keyboard>::new();
+    computer.set_rom(Rom::from_binary("Rect.hack").unwrap());
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()

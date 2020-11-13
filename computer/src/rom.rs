@@ -1,3 +1,10 @@
+use std::{
+    convert::TryInto,
+    fs::File,
+    io::{BufRead, BufReader},
+    path::Path,
+};
+
 pub struct Rom {
     data: [[bool; 16]; 32768],
     address: usize,
@@ -9,6 +16,29 @@ impl Rom {
             data: [[false; 16]; 32768],
             address: 0,
         }
+    }
+
+    pub fn from_binary<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+        let reader = BufReader::new(File::open(path)?);
+        let mut bits = reader
+            .lines()
+            .filter_map(|line| line.ok())
+            .map(|line| {
+                line.trim()
+                    .chars()
+                    .map(|b| b == '1')
+                    .collect::<Vec<_>>()
+                    .as_slice()
+                    .try_into()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+        bits.extend_from_slice(&vec![[false; 16]; 32768 - bits.len()]);
+        let bits = bits.as_slice().try_into().unwrap();
+        Ok(Self {
+            data: bits,
+            address: 0,
+        })
     }
 
     pub fn set_address(&mut self, address: &[bool; 15]) {

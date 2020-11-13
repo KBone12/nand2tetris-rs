@@ -55,17 +55,16 @@ impl Cpu {
         );
         self.result = result;
         let a = self.a.get_output();
-        self.address = [
-            a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13],
-            a[14], a[15],
-        ];
         self.pc.tick(
             reset,
             or(
-                and(instruction[13], negate),
+                and(instruction[0], and(instruction[13], negate)),
                 or(
-                    and(instruction[14], zero),
-                    and(instruction[15], and(not(zero), not(negate))),
+                    and(instruction[0], and(instruction[14], zero)),
+                    and(
+                        instruction[0],
+                        and(instruction[15], and(not(zero), not(negate))),
+                    ),
                 ),
             ),
             true,
@@ -76,12 +75,32 @@ impl Cpu {
         self.a
             .tick(write_to_a, &mux16(&a_data, &self.result, instruction[0]));
         self.d.tick(write_to_d, &self.result);
+        let a = self.a.get_output();
+        self.address = [
+            a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13],
+            a[14], a[15],
+        ];
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tick_increments_pc_if_not_reset_and_not_jump() {
+        let mut cpu = Cpu::new();
+        cpu.tick(true, &[false; 16], &[false; 16]);
+        assert_eq!(cpu.get_output().1, [false; 16]);
+        cpu.tick(false, &[false; 16], &[false; 16]);
+        assert_eq!(
+            cpu.get_output().1,
+            [
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, true
+            ]
+        );
+    }
 
     #[test]
     fn two_plus_three_equals_five() {
