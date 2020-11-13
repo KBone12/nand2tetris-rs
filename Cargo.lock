@@ -347,6 +347,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "debugger"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "computer",
+]
+
+[[package]]
 name = "derivative"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
