@@ -1,25 +1,26 @@
 use crate::{
     chip::{
         basic::{and, mux16, not, or},
-        mem::{Ram16k, Register},
+        mem::Ram16k,
     },
+    keyboard::Keyboard,
     screen::Screen,
 };
 
-pub struct Memory<S: Screen> {
+pub struct Memory<S: Screen, K: Keyboard> {
     address: [bool; 15],
     ram: Ram16k,
     screen: S,
-    keyboard: Register,
+    keyboard: K,
 }
 
-impl<S: Screen> Memory<S> {
+impl<S: Screen, K: Keyboard> Memory<S, K> {
     pub fn new() -> Self {
         Self {
             address: [false; 15],
             ram: Ram16k::new(),
             screen: S::new(),
-            keyboard: Register::new(),
+            keyboard: K::new(),
         }
     }
 
@@ -88,8 +89,10 @@ impl<S: Screen> Memory<S> {
             and(and(address[0], not(address[1])), load),
             input,
         );
-        self.keyboard
-            .tick(and(and(address[0], address[1]), load), input);
+    }
+
+    pub fn set_keystate(&mut self, state: K::State) {
+        self.keyboard.set_state(state);
     }
 
     pub fn screen(&self) -> &S {

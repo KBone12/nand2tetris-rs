@@ -23,13 +23,15 @@ mod chip;
 mod computer;
 use computer::Computer;
 mod cpu;
+mod keyboard;
+use keyboard::winit::WinitKeyboard as Keyboard;
 mod memory;
 mod rom;
 mod screen;
 use screen::wgpu::WgpuScreen as Screen;
 
 async fn run() {
-    let mut computer = Computer::<Screen>::new();
+    let mut computer = Computer::<Screen, Keyboard>::new();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -236,6 +238,12 @@ async fn run() {
                     },
             } if window_id == window.id() => {
                 *control_flow = ControlFlow::Exit;
+            }
+            Event::WindowEvent {
+                window_id,
+                event: WindowEvent::KeyboardInput { input, .. },
+            } if window_id == window.id() => {
+                computer.set_keystate(input);
             }
             Event::MainEventsCleared => {
                 let duration_per_update = Duration::from_secs_f64(1.0 / 60.0);

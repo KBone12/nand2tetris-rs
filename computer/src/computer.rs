@@ -1,12 +1,12 @@
-use crate::{cpu::Cpu, memory::Memory, rom::Rom, screen::Screen};
+use crate::{cpu::Cpu, keyboard::Keyboard, memory::Memory, rom::Rom, screen::Screen};
 
-pub struct Computer<S: Screen> {
+pub struct Computer<S: Screen, K: Keyboard> {
     rom: Rom,
     cpu: Cpu,
-    memory: Memory<S>,
+    memory: Memory<S, K>,
 }
 
-impl<S: Screen> Computer<S> {
+impl<S: Screen, K: Keyboard> Computer<S, K> {
     pub fn new() -> Self {
         Self {
             rom: Rom::new(),
@@ -26,6 +26,10 @@ impl<S: Screen> Computer<S> {
         self.rom.set_address(&pc);
         let instruction = self.rom.get_output();
         self.cpu.tick(reset, &memory_data, &instruction);
+    }
+
+    pub fn set_keystate(&mut self, state: K::State) {
+        self.memory.set_keystate(state);
     }
 
     pub fn screen(&self) -> &S {
