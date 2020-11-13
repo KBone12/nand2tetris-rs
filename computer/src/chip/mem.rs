@@ -1,6 +1,8 @@
+#![allow(dead_code)]
+
 use crate::chip::{
     arith::inc16,
-    basic::{and, mux, mux16, not, or},
+    basic::{mux, mux16, or},
 };
 
 pub struct Dff {
@@ -106,41 +108,7 @@ impl Ram8 {
     pub fn tick(&mut self, address: &[bool; 3], load: bool, input: &[bool; 16]) {
         self.address =
             (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
-        self.registers[0].tick(
-            and(
-                and(not(address[0]), not(address[1])),
-                and(not(address[2]), load),
-            ),
-            input,
-        );
-        self.registers[1].tick(
-            and(and(not(address[0]), not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.registers[2].tick(
-            and(and(not(address[0]), address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.registers[3].tick(
-            and(and(not(address[0]), address[1]), and(address[2], load)),
-            input,
-        );
-        self.registers[4].tick(
-            and(and(address[0], not(address[1])), and(not(address[2]), load)),
-            input,
-        );
-        self.registers[5].tick(
-            and(and(address[0], not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.registers[6].tick(
-            and(and(address[0], address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.registers[7].tick(
-            and(and(address[0], address[1]), and(address[2], load)),
-            input,
-        );
+        self.registers[self.address].tick(load, input);
     }
 }
 
@@ -174,49 +142,7 @@ impl Ram64 {
         self.address =
             (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
         let ad = &[address[3], address[4], address[5]];
-        self.rams[0].tick(
-            ad,
-            and(
-                and(not(address[0]), not(address[1])),
-                and(not(address[2]), load),
-            ),
-            input,
-        );
-        self.rams[1].tick(
-            ad,
-            and(and(not(address[0]), not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.rams[2].tick(
-            ad,
-            and(and(not(address[0]), address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[3].tick(
-            ad,
-            and(and(not(address[0]), address[1]), and(address[2], load)),
-            input,
-        );
-        self.rams[4].tick(
-            ad,
-            and(and(address[0], not(address[1])), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[5].tick(
-            ad,
-            and(and(address[0], not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.rams[6].tick(
-            ad,
-            and(and(address[0], address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[7].tick(
-            ad,
-            and(and(address[0], address[1]), and(address[2], load)),
-            input,
-        );
+        self.rams[self.address].tick(ad, load, input);
     }
 }
 
@@ -252,49 +178,7 @@ impl Ram512 {
         let ad = &[
             address[3], address[4], address[5], address[6], address[7], address[8],
         ];
-        self.rams[0].tick(
-            ad,
-            and(
-                and(not(address[0]), not(address[1])),
-                and(not(address[2]), load),
-            ),
-            input,
-        );
-        self.rams[1].tick(
-            ad,
-            and(and(not(address[0]), not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.rams[2].tick(
-            ad,
-            and(and(not(address[0]), address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[3].tick(
-            ad,
-            and(and(not(address[0]), address[1]), and(address[2], load)),
-            input,
-        );
-        self.rams[4].tick(
-            ad,
-            and(and(address[0], not(address[1])), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[5].tick(
-            ad,
-            and(and(address[0], not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.rams[6].tick(
-            ad,
-            and(and(address[0], address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[7].tick(
-            ad,
-            and(and(address[0], address[1]), and(address[2], load)),
-            input,
-        );
+        self.rams[self.address].tick(ad, load, input);
     }
 }
 
@@ -338,49 +222,7 @@ impl Ram4k {
             address[10],
             address[11],
         ];
-        self.rams[0].tick(
-            ad,
-            and(
-                and(not(address[0]), not(address[1])),
-                and(not(address[2]), load),
-            ),
-            input,
-        );
-        self.rams[1].tick(
-            ad,
-            and(and(not(address[0]), not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.rams[2].tick(
-            ad,
-            and(and(not(address[0]), address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[3].tick(
-            ad,
-            and(and(not(address[0]), address[1]), and(address[2], load)),
-            input,
-        );
-        self.rams[4].tick(
-            ad,
-            and(and(address[0], not(address[1])), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[5].tick(
-            ad,
-            and(and(address[0], not(address[1])), and(address[2], load)),
-            input,
-        );
-        self.rams[6].tick(
-            ad,
-            and(and(address[0], address[1]), and(not(address[2]), load)),
-            input,
-        );
-        self.rams[7].tick(
-            ad,
-            and(and(address[0], address[1]), and(address[2], load)),
-            input,
-        );
+        self.rams[self.address].tick(ad, load, input);
     }
 }
 
@@ -417,8 +259,7 @@ impl Ram8k {
             address[11],
             address[12],
         ];
-        self.rams[0].tick(ad, and(not(address[0]), load), input);
-        self.rams[1].tick(ad, and(address[0], load), input);
+        self.rams[self.address].tick(ad, load, input);
     }
 }
 
@@ -456,8 +297,7 @@ impl Ram16k {
             address[12],
             address[13],
         ];
-        self.rams[0].tick(ad, and(not(address[0]), load), input);
-        self.rams[1].tick(ad, and(address[0], load), input);
+        self.rams[self.address].tick(ad, load, input);
     }
 }
 

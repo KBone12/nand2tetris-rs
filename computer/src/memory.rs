@@ -1,26 +1,26 @@
-use crate::chip::{
-    basic::{and, mux16, not, or},
-    mem::{Ram16k, Ram8k, Register},
+use crate::{
+    chip::{
+        basic::{and, mux16, not, or},
+        mem::Ram16k,
+    },
+    keyboard::Keyboard,
+    screen::Screen,
 };
 
-pub struct Memory {
+pub struct Memory<S: Screen, K: Keyboard> {
     address: [bool; 15],
-    load: bool,
-    input: [bool; 16],
     ram: Ram16k,
-    screen: Ram8k,
-    keyboard: Register,
+    screen: S,
+    keyboard: K,
 }
 
-impl Memory {
+impl<S: Screen, K: Keyboard> Memory<S, K> {
     pub fn new() -> Self {
         Self {
             address: [false; 15],
-            load: false,
-            input: [false; 16],
             ram: Ram16k::new(),
-            screen: Ram8k::new(),
-            keyboard: Register::new(),
+            screen: S::new(),
+            keyboard: K::new(),
         }
     }
 
@@ -50,6 +50,7 @@ impl Memory {
                 )
             )
         )));
+        self.address = *address;
         self.ram.tick(
             &[
                 address[1],
@@ -89,14 +90,21 @@ impl Memory {
             and(and(address[0], not(address[1])), load),
             input,
         );
-        self.keyboard
-            .tick(and(and(address[0], address[1]), load), input);
+    }
+
+    pub fn set_keystate(&mut self, state: K::State) {
+        self.keyboard.set_state(state);
+    }
+
+    pub fn screen(&self) -> &S {
+        &self.screen
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{keyboard::DummyKeyboard, screen::DummyScreen};
 
     #[test]
     fn memorys_can_read_and_write_data_with_clock() {
@@ -127,7 +135,7 @@ mod tests {
             (
                 [true; 16],
                 [
-                    true, true, false, false, false, false, false, false, false, false, false,
+                    true, false, true, false, false, false, false, false, false, false, false,
                     false, false, false, false,
                 ],
             ),
@@ -158,14 +166,20 @@ mod tests {
             [false; 16],
             [false; 16],
         ];
-        let mut mem = Memory::new();
+        let mut mem = Memory::<DummyScreen, DummyKeyboard>::new();
 
         inputs
             .iter()
             .zip(expected.iter())
             .for_each(|((input, address), &output)| {
                 mem.tick(address, true, input);
-                assert_eq!(mem.get_output(), output);
+                assert_eq!(
+                    mem.get_output(),
+                    output,
+                    "input: {:?}, address: {:?}",
+                    input,
+                    address
+                );
             });
     }
 
@@ -176,7 +190,7 @@ mod tests {
             true, true, false, false, false, false, false, false, false, false, false, false,
             false, false, true,
         ];
-        let mut mem = Memory::new();
+        let mut mem = Memory::<DummyScreen, DummyKeyboard>::new();
 
         mem.tick(&address, false, &[false; 16]);
     }
