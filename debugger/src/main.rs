@@ -6,10 +6,6 @@ use computer::{
     keyboard::DummyKeyboard as Keyboard, rom::Rom, screen::DummyScreen as Screen, Computer,
 };
 
-fn bits_to_u16(bits: &[bool; 16]) -> u16 {
-    bits.iter().fold(0, |acc, x| (acc << 1) | (*x as u16))
-}
-
 fn print_help() {
     println!(
         r#"commands:
@@ -50,7 +46,7 @@ fn main() {
     let mut line = String::new();
     loop {
         line.clear();
-        print!(" PC = {} > ", bits_to_u16(&computer.pc()));
+        print!(" PC = {} > ", computer.pc().as_raw());
         std::io::stdout().flush().unwrap();
         std::io::stdin().read_line(&mut line).unwrap();
         match line.trim() {
@@ -58,9 +54,9 @@ fn main() {
             "show" => {
                 println!(
                     "A: {}, D: {}, M: {}",
-                    bits_to_u16(&computer.a()),
-                    bits_to_u16(&computer.d()),
-                    bits_to_u16(&computer.m()),
+                    computer.a().as_raw(),
+                    computer.d().as_raw(),
+                    computer.m().as_raw(),
                 );
             }
             "next" => {

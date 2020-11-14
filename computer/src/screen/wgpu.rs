@@ -1,7 +1,7 @@
-use crate::{chip::mem::Ram8k, screen::Screen};
+use crate::{chip::mem::Ram8k, screen::Screen, signal::Word};
 
 pub struct WgpuScreen {
-    ram: Ram8k,
+    ram: Ram8k<Word>,
     colors: Vec<u8>,
 }
 
@@ -22,11 +22,11 @@ impl Screen for WgpuScreen {
         }
     }
 
-    fn get_output(&self) -> [bool; 16] {
+    fn get_output(&self) -> Word {
         self.ram.get_output()
     }
 
-    fn tick(&mut self, address: &[bool; 13], load: bool, input: &[bool; 16]) {
+    fn tick(&mut self, address: &[bool; 13], load: bool, input: Word) {
         self.ram.tick(address, load, input);
 
         if load {
@@ -43,6 +43,7 @@ impl Screen for WgpuScreen {
                 | (address[10] as usize) << 2
                 | (address[11] as usize) << 1
                 | address[12] as usize;
+            let input = input.split();
             for i in 0..16 {
                 let value = if input[i] { 1.0f32 } else { 0.0 }.to_ne_bytes();
                 self.colors[address * 16 * 4 + i * 4 + 0] = value[0];

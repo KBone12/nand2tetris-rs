@@ -1,90 +1,53 @@
-#![allow(dead_code)]
-
-use crate::chip::{
-    arith::inc16,
-    basic::{mux, mux16, or},
+use crate::{
+    chip::{
+        arith::inc,
+        basic::{mux, or},
+    },
+    signal::{Signal, Word},
 };
 
-pub struct Dff {
-    output: bool,
+pub struct Dff<S: Signal> {
+    output: S,
 }
 
-impl Dff {
+impl<S: Signal> Dff<S> {
     pub fn new() -> Self {
-        Self { output: false }
+        Self { output: S::zero() }
     }
 
-    pub fn get_output(&self) -> bool {
+    pub fn get_output(&self) -> S {
         self.output
     }
 
-    pub fn tick(&mut self, input: bool) {
+    pub fn tick(&mut self, input: S) {
         self.output = input;
     }
 }
 
-pub struct Dff16 {
-    output: [bool; 16],
+pub struct Register<S: Signal> {
+    dff: Dff<S>,
 }
 
-impl Dff16 {
-    pub fn new() -> Self {
-        Self {
-            output: [false; 16],
-        }
-    }
-
-    pub fn get_output(&self) -> [bool; 16] {
-        self.output
-    }
-
-    pub fn tick(&mut self, input: &[bool; 16]) {
-        self.output = *input;
-    }
-}
-
-pub struct Bit {
-    dff: Dff,
-}
-
-impl Bit {
+impl<S: Signal> Register<S> {
     pub fn new() -> Self {
         Self { dff: Dff::new() }
     }
 
-    pub fn get_output(&self) -> bool {
+    pub fn get_output(&self) -> S {
         self.dff.get_output()
     }
 
-    pub fn tick(&mut self, load: bool, input: bool) {
+    pub fn tick(&mut self, load: bool, input: S) {
         self.dff.tick(mux(self.get_output(), input, load));
     }
 }
 
-pub struct Register {
-    dff: Dff16,
-}
-
-impl Register {
-    pub fn new() -> Self {
-        Self { dff: Dff16::new() }
-    }
-
-    pub fn get_output(&self) -> [bool; 16] {
-        self.dff.get_output()
-    }
-
-    pub fn tick(&mut self, load: bool, input: &[bool; 16]) {
-        self.dff.tick(&mux16(&self.get_output(), input, load));
-    }
-}
-
-pub struct Ram8 {
-    registers: [Register; 8],
+pub struct Ram8<S: Signal> {
+    registers: [Register<S>; 8],
     address: usize,
 }
 
-impl Ram8 {
+impl<S: Signal> Ram8<S> {
     pub fn new() -> Self {
         Self {
             registers: [
@@ -101,23 +64,23 @@ impl Ram8 {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> S {
         self.registers[self.address].get_output()
     }
 
-    pub fn tick(&mut self, address: &[bool; 3], load: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, address: &[bool; 3], load: bool, input: S) {
         self.address =
             (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
         self.registers[self.address].tick(load, input);
     }
 }
 
-pub struct Ram64 {
-    rams: [Ram8; 8],
+pub struct Ram64<S: Signal> {
+    rams: [Ram8<S>; 8],
     address: usize,
 }
 
-impl Ram64 {
+impl<S: Signal> Ram64<S> {
     pub fn new() -> Self {
         Self {
             rams: [
@@ -134,11 +97,11 @@ impl Ram64 {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> S {
         self.rams[self.address].get_output()
     }
 
-    pub fn tick(&mut self, address: &[bool; 6], load: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, address: &[bool; 6], load: bool, input: S) {
         self.address =
             (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
         let ad = &[address[3], address[4], address[5]];
@@ -146,12 +109,12 @@ impl Ram64 {
     }
 }
 
-pub struct Ram512 {
-    rams: [Ram64; 8],
+pub struct Ram512<S: Signal> {
+    rams: [Ram64<S>; 8],
     address: usize,
 }
 
-impl Ram512 {
+impl<S: Signal> Ram512<S> {
     pub fn new() -> Self {
         Self {
             rams: [
@@ -168,11 +131,11 @@ impl Ram512 {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> S {
         self.rams[self.address].get_output()
     }
 
-    pub fn tick(&mut self, address: &[bool; 9], load: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, address: &[bool; 9], load: bool, input: S) {
         self.address =
             (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
         let ad = &[
@@ -182,12 +145,12 @@ impl Ram512 {
     }
 }
 
-pub struct Ram4k {
-    rams: [Ram512; 8],
+pub struct Ram4k<S: Signal> {
+    rams: [Ram512<S>; 8],
     address: usize,
 }
 
-impl Ram4k {
+impl<S: Signal> Ram4k<S> {
     pub fn new() -> Self {
         Self {
             rams: [
@@ -204,11 +167,11 @@ impl Ram4k {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> S {
         self.rams[self.address].get_output()
     }
 
-    pub fn tick(&mut self, address: &[bool; 12], load: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, address: &[bool; 12], load: bool, input: S) {
         self.address =
             (address[0] as usize) << 2 | (address[1] as usize) << 1 | address[2] as usize;
         let ad = &[
@@ -226,12 +189,12 @@ impl Ram4k {
     }
 }
 
-pub struct Ram8k {
-    rams: [Ram4k; 2],
+pub struct Ram8k<S: Signal> {
+    rams: [Ram4k<S>; 2],
     address: usize,
 }
 
-impl Ram8k {
+impl<S: Signal> Ram8k<S> {
     pub fn new() -> Self {
         Self {
             rams: [Ram4k::new(), Ram4k::new()],
@@ -239,11 +202,11 @@ impl Ram8k {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> S {
         self.rams[self.address].get_output()
     }
 
-    pub fn tick(&mut self, address: &[bool; 13], load: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, address: &[bool; 13], load: bool, input: S) {
         self.address = address[0] as usize;
         let ad = &[
             address[1],
@@ -263,12 +226,12 @@ impl Ram8k {
     }
 }
 
-pub struct Ram16k {
-    rams: [Ram8k; 2],
+pub struct Ram16k<S: Signal> {
+    rams: [Ram8k<S>; 2],
     address: usize,
 }
 
-impl Ram16k {
+impl<S: Signal> Ram16k<S> {
     pub fn new() -> Self {
         Self {
             rams: [Ram8k::new(), Ram8k::new()],
@@ -276,11 +239,11 @@ impl Ram16k {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> S {
         self.rams[self.address].get_output()
     }
 
-    pub fn tick(&mut self, address: &[bool; 14], load: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, address: &[bool; 14], load: bool, input: S) {
         self.address = address[0] as usize;
         let ad = &[
             address[1],
@@ -302,7 +265,7 @@ impl Ram16k {
 }
 
 pub struct Pc {
-    register: Register,
+    register: Register<Word>,
 }
 
 impl Pc {
@@ -312,20 +275,20 @@ impl Pc {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> Word {
         self.register.get_output()
     }
 
-    pub fn tick(&mut self, reset: bool, load: bool, increment: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, reset: bool, load: bool, increment: bool, input: Word) {
         self.register.tick(
             or(or(reset, load), increment),
-            &mux16(
-                &mux16(
-                    &mux16(&self.get_output(), &inc16(&self.get_output()), increment),
+            mux(
+                mux(
+                    mux(self.get_output(), inc(self.get_output()), increment),
                     input,
                     load,
                 ),
-                &[false; 16],
+                Word::zero(),
                 reset,
             ),
         );
@@ -389,37 +352,15 @@ mod tests {
                 [false; 16],
             ),
         ];
-        let mut dff = Dff16::new();
+        let mut dff = Dff::new();
 
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|(input, &(now, next))| {
-                assert_eq!(dff.get_output(), now);
-                dff.tick(input);
-                assert_eq!(dff.get_output(), next);
-            });
-    }
-
-    #[test]
-    fn bit_changes_the_output_when_load_flag_is_on() {
-        let inputs = [
-            (false, false),
-            (true, false),
-            (false, true),
-            (true, true),
-            (false, false),
-            (true, false),
-        ];
-        let expected = [false, false, false, true, true, false];
-        let mut bit = Bit::new();
-
-        inputs
-            .iter()
-            .zip(expected.iter())
-            .for_each(|(&(load, input), &output)| {
-                bit.tick(load, input);
-                assert_eq!(bit.get_output(), output);
+            .for_each(|(&input, &(now, next))| {
+                assert_eq!(dff.get_output(), Word::from(now));
+                dff.tick(Word::from(input));
+                assert_eq!(dff.get_output(), Word::from(next));
             });
     }
 
@@ -446,9 +387,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((load, input), &output)| {
-                register.tick(*load, input);
-                assert_eq!(register.get_output(), output);
+            .for_each(|(&(load, input), &output)| {
+                register.tick(load, Word::from(input));
+                assert_eq!(register.get_output(), Word::from(output));
             });
     }
 
@@ -481,9 +422,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((address, load, input), &output)| {
-                ram.tick(address, *load, input);
-                assert_eq!(ram.get_output(), output);
+            .for_each(|(&(address, load, input), &output)| {
+                ram.tick(&address, load, Word::from(input));
+                assert_eq!(ram.get_output(), Word::from(output));
             });
     }
 
@@ -510,9 +451,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((address, load, input), &output)| {
-                ram.tick(address, *load, input);
-                assert_eq!(ram.get_output(), output);
+            .for_each(|(&(address, load, input), &output)| {
+                ram.tick(&address, load, Word::from(input));
+                assert_eq!(ram.get_output(), Word::from(output));
             });
     }
 
@@ -539,9 +480,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((address, load, input), &output)| {
-                ram.tick(address, *load, input);
-                assert_eq!(ram.get_output(), output);
+            .for_each(|(&(address, load, input), &output)| {
+                ram.tick(&address, load, Word::from(input));
+                assert_eq!(ram.get_output(), Word::from(output));
             });
     }
 
@@ -568,9 +509,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((address, load, input), &output)| {
-                ram.tick(address, *load, input);
-                assert_eq!(ram.get_output(), output);
+            .for_each(|(&(address, load, input), &output)| {
+                ram.tick(&address, load, Word::from(input));
+                assert_eq!(ram.get_output(), Word::from(output));
             });
     }
 
@@ -597,9 +538,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((address, load, input), &output)| {
-                ram.tick(address, *load, input);
-                assert_eq!(ram.get_output(), output);
+            .for_each(|(&(address, load, input), &output)| {
+                ram.tick(&address, load, Word::from(input));
+                assert_eq!(ram.get_output(), Word::from(output));
             });
     }
 
@@ -626,9 +567,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((address, load, input), &output)| {
-                ram.tick(address, *load, input);
-                assert_eq!(ram.get_output(), output);
+            .for_each(|(&(address, load, input), &output)| {
+                ram.tick(&address, load, Word::from(input));
+                assert_eq!(ram.get_output(), Word::from(output));
             });
     }
 
@@ -658,9 +599,9 @@ mod tests {
         let mut pc = Pc::new();
 
         inputs.iter().zip(expected.iter()).for_each(
-            |((reset, load, increment, input), &output)| {
-                pc.tick(*reset, *load, *increment, input);
-                assert_eq!(pc.get_output(), output);
+            |(&(reset, load, increment, input), &output)| {
+                pc.tick(reset, load, increment, Word::from(input));
+                assert_eq!(pc.get_output(), Word::from(output));
             },
         );
     }
@@ -683,9 +624,9 @@ mod tests {
         let mut pc = Pc::new();
 
         inputs.iter().zip(expected.iter()).for_each(
-            |((reset, load, increment, input), &output)| {
-                pc.tick(*reset, *load, *increment, input);
-                assert_eq!(pc.get_output(), output);
+            |(&(reset, load, increment, input), &output)| {
+                pc.tick(reset, load, increment, Word::from(input));
+                assert_eq!(pc.get_output(), Word::from(output));
             },
         );
     }
@@ -731,9 +672,9 @@ mod tests {
         let mut pc = Pc::new();
 
         inputs.iter().zip(expected.iter()).for_each(
-            |((reset, load, increment, input), &output)| {
-                pc.tick(*reset, *load, *increment, input);
-                assert_eq!(pc.get_output(), output);
+            |(&(reset, load, increment, input), &output)| {
+                pc.tick(reset, load, increment, Word::from(input));
+                assert_eq!(pc.get_output(), Word::from(output));
             },
         );
     }

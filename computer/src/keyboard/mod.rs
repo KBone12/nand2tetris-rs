@@ -1,4 +1,4 @@
-use crate::chip::mem::Register;
+use crate::{chip::mem::Register, signal::Word};
 
 pub mod winit;
 
@@ -6,12 +6,12 @@ pub trait Keyboard {
     type State;
 
     fn new() -> Self;
-    fn get_output(&self) -> [bool; 16];
+    fn get_output(&self) -> Word;
     fn set_state(&mut self, state: Self::State);
 }
 
 pub struct DummyKeyboard {
-    register: Register,
+    register: Register<Word>,
 }
 
 impl Keyboard for DummyKeyboard {
@@ -23,7 +23,7 @@ impl Keyboard for DummyKeyboard {
         }
     }
 
-    fn get_output(&self) -> [bool; 16] {
+    fn get_output(&self) -> Word {
         self.register.get_output()
     }
 

@@ -1,6 +1,9 @@
-use crate::chip::basic::{and16, mux16, nand, not, not16, or};
+use crate::{
+    chip::basic::{and, mux, nand, not, or},
+    signal::Word,
+};
 
-pub const fn half_adder(a: bool, b: bool) -> (bool, bool) {
+pub fn half_adder(a: bool, b: bool) -> (bool, bool) {
     // This is readable.
     /*
     (and(a, b), xor(a, b))
@@ -10,7 +13,7 @@ pub const fn half_adder(a: bool, b: bool) -> (bool, bool) {
     (not(tmp), nand(nand(a, tmp), nand(tmp, b)))
 }
 
-pub const fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
+pub fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
     // This is readable.
     /*
     let (c0, sum) = half_adder(a, b);
@@ -24,98 +27,55 @@ pub const fn full_adder(a: bool, b: bool, c: bool) -> (bool, bool) {
     (nand(nab, tmp), nand(nand(xor_ab, tmp), nand(tmp, c)))
 }
 
-pub const fn add16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
+pub fn add(a: Word, b: Word) -> Word {
+    let a = a.split();
+    let b = b.split();
     let mut output = [false; 16];
     let (c, s) = half_adder(a[15], b[15]);
     let mut carry = c;
     output[15] = s;
-    // Expand for-loop for const fn
-    let (c, s) = full_adder(a[14 - 0], b[14 - 0], carry);
-    carry = c;
-    output[14 - 0] = s;
-    let (c, s) = full_adder(a[14 - 1], b[14 - 1], carry);
-    carry = c;
-    output[14 - 1] = s;
-    let (c, s) = full_adder(a[14 - 2], b[14 - 2], carry);
-    carry = c;
-    output[14 - 2] = s;
-    let (c, s) = full_adder(a[14 - 3], b[14 - 3], carry);
-    carry = c;
-    output[14 - 3] = s;
-    let (c, s) = full_adder(a[14 - 4], b[14 - 4], carry);
-    carry = c;
-    output[14 - 4] = s;
-    let (c, s) = full_adder(a[14 - 5], b[14 - 5], carry);
-    carry = c;
-    output[14 - 5] = s;
-    let (c, s) = full_adder(a[14 - 6], b[14 - 6], carry);
-    carry = c;
-    output[14 - 6] = s;
-    let (c, s) = full_adder(a[14 - 7], b[14 - 7], carry);
-    carry = c;
-    output[14 - 7] = s;
-    let (c, s) = full_adder(a[14 - 8], b[14 - 8], carry);
-    carry = c;
-    output[14 - 8] = s;
-    let (c, s) = full_adder(a[14 - 9], b[14 - 9], carry);
-    carry = c;
-    output[14 - 9] = s;
-    let (c, s) = full_adder(a[14 - 10], b[14 - 10], carry);
-    carry = c;
-    output[14 - 10] = s;
-    let (c, s) = full_adder(a[14 - 11], b[14 - 11], carry);
-    carry = c;
-    output[14 - 11] = s;
-    let (c, s) = full_adder(a[14 - 12], b[14 - 12], carry);
-    carry = c;
-    output[14 - 12] = s;
-    let (c, s) = full_adder(a[14 - 13], b[14 - 13], carry);
-    carry = c;
-    output[14 - 13] = s;
-    let (_c, s) = full_adder(a[14 - 14], b[14 - 14], carry);
-    output[14 - 14] = s;
-    output
+    for i in 1..16 {
+        let (c, s) = full_adder(a[15 - i], b[15 - i], carry);
+        carry = c;
+        output[15 - i] = s;
+    }
+    Word::from(output)
 }
 
-pub const fn inc16(input: &[bool; 16]) -> [bool; 16] {
-    add16(
-        input,
-        &[
-            false, false, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, true,
-        ],
-    )
+pub fn inc(input: Word) -> Word {
+    add(input, Word::from(1))
 }
 
-pub const fn alu(
-    a: &[bool; 16],
-    b: &[bool; 16],
+pub fn alu(
+    a: Word,
+    b: Word,
     zero_a: bool,
     negate_a: bool,
     zero_b: bool,
     negate_b: bool,
     f: bool,
     negate_output: bool,
-) -> ([bool; 16], bool, bool) {
-    let a = &and16(&[not(zero_a); 16], a);
-    let a = &mux16(a, &not16(a), negate_a);
-    let b = &and16(&[not(zero_b); 16], b);
-    let b = &mux16(b, &not16(b), negate_b);
-    let and_ab = &and16(a, b);
-    let add_ab = &add16(a, b);
-    let output = &mux16(and_ab, add_ab, f);
-    let output = mux16(output, &not16(output), negate_output);
+) -> (Word, bool, bool) {
+    let a = and(Word::from(not(zero_a)), a);
+    let a = mux(a, not(a), negate_a);
+    let b = and(Word::from(not(zero_b)), b);
+    let b = mux(b, not(b), negate_b);
+    let and_ab = and(a, b);
+    let add_ab = add(a, b);
+    let output = mux(and_ab, add_ab, f);
+    let output = mux(output, not(output), negate_output);
+    let bits = output.split();
     let zero = not(or(
         or(
-            or(or(output[0], output[1]), or(output[2], output[3])),
-            or(or(output[4], output[5]), or(output[6], output[7])),
+            or(or(bits[0], bits[1]), or(bits[2], bits[3])),
+            or(or(bits[4], bits[5]), or(bits[6], bits[7])),
         ),
         or(
-            or(or(output[8], output[9]), or(output[10], output[11])),
-            or(or(output[12], output[13]), or(output[14], output[15])),
+            or(or(bits[8], bits[9]), or(bits[10], bits[11])),
+            or(or(bits[12], bits[13]), or(bits[14], bits[15])),
         ),
     ));
-    let negate = output[0];
+    let negate = bits[0];
     (output, zero, negate)
 }
 
@@ -209,7 +169,16 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b), &out)| assert_eq!(add16(a, b), out));
+            .for_each(|(&(a, b), &out)| {
+                assert_eq!(
+                    add(Word::from(a), Word::from(b)),
+                    Word::from(out),
+                    "{:?} + {:?} = {:?}",
+                    Word::from(a),
+                    Word::from(b),
+                    Word::from(out)
+                )
+            });
     }
 
     #[test]
@@ -245,7 +214,7 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|(input, &out)| assert_eq!(inc16(input), out));
+            .for_each(|(&input, &out)| assert_eq!(inc(Word::from(input)), Word::from(out)));
     }
 
     #[test]
@@ -287,17 +256,17 @@ mod tests {
             ),
         ];
         let expected = [
-            ([false; 16], true, false),
-            ([false; 16], true, false),
-            ([false; 16], true, false),
-            ([true; 16], false, true),
-            ([false; 16], true, false),
-            ([false; 16], true, false),
+            (Word::from([false; 16]), true, false),
+            (Word::from([false; 16]), true, false),
+            (Word::from([false; 16]), true, false),
+            (Word::from([true; 16]), false, true),
+            (Word::from([false; 16]), true, false),
+            (Word::from([false; 16]), true, false),
             (
-                [
+                Word::from([
                     true, false, false, false, false, false, false, false, false, false, false,
                     false, false, false, false, false,
-                ],
+                ]),
                 false,
                 true,
             ),
@@ -306,8 +275,20 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b), &out)| {
-                assert_eq!(alu(a, b, false, false, false, false, false, false), out)
+            .for_each(|(&(a, b), &out)| {
+                assert_eq!(
+                    alu(
+                        Word::from(a),
+                        Word::from(b),
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false
+                    ),
+                    out
+                )
             });
     }
 
@@ -340,23 +321,23 @@ mod tests {
             ),
         ];
         let expected = [
-            ([false; 16], true, false),
-            ([true; 16], false, true),
-            ([true; 16], false, true),
+            (Word::from([false; 16]), true, false),
+            (Word::from([true; 16]), false, true),
+            (Word::from([true; 16]), false, true),
             (
-                [
+                Word::from([
                     true, true, true, true, true, true, true, true, true, true, true, true, true,
                     true, true, false,
-                ],
+                ]),
                 false,
                 true,
             ),
-            ([true; 16], false, true),
+            (Word::from([true; 16]), false, true),
             (
-                [
+                Word::from([
                     true, false, true, false, true, false, true, false, true, false, true, false,
                     true, false, true, false,
-                ],
+                ]),
                 false,
                 true,
             ),
@@ -365,8 +346,20 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b), &out)| {
-                assert_eq!(alu(a, b, false, false, false, false, true, false), out)
+            .for_each(|(&(a, b), &out)| {
+                assert_eq!(
+                    alu(
+                        Word::from(a),
+                        Word::from(b),
+                        false,
+                        false,
+                        false,
+                        false,
+                        true,
+                        false
+                    ),
+                    out
+                )
             });
     }
 
@@ -441,18 +434,18 @@ mod tests {
             ),
         ];
         let expected = [
-            ([true; 16], false, true),
-            ([true; 16], false, true),
-            ([true; 16], false, true),
-            ([false; 16], true, false),
-            ([true; 16], false, true),
-            ([false; 16], true, false),
-            ([false; 16], true, false),
+            (Word::from([true; 16]), false, true),
+            (Word::from([true; 16]), false, true),
+            (Word::from([true; 16]), false, true),
+            (Word::from([false; 16]), true, false),
+            (Word::from([true; 16]), false, true),
+            (Word::from([false; 16]), true, false),
+            (Word::from([false; 16]), true, false),
             (
-                [
+                Word::from([
                     false, false, false, false, false, false, false, false, false, false, false,
                     false, false, false, false, true,
-                ],
+                ]),
                 false,
                 false,
             ),
@@ -461,8 +454,11 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b, za, na, zb, nb, f, no), &out)| {
-                assert_eq!(alu(a, b, *za, *na, *zb, *nb, *f, *no), out)
+            .for_each(|(&(a, b, za, na, zb, nb, f, no), &out)| {
+                assert_eq!(
+                    alu(Word::from(a), Word::from(b), za, na, zb, nb, f, no),
+                    out
+                )
             });
     }
 
@@ -478,20 +474,32 @@ mod tests {
             ([true; 16], [true; 16], true, true),
         ];
         let expected = [
-            ([false; 16], true, false),
-            ([false; 16], true, false),
-            ([false; 16], true, false),
-            ([true; 16], false, true),
-            ([true; 16], false, true),
-            ([false; 16], true, false),
-            ([false; 16], true, false),
+            (Word::from([false; 16]), true, false),
+            (Word::from([false; 16]), true, false),
+            (Word::from([false; 16]), true, false),
+            (Word::from([true; 16]), false, true),
+            (Word::from([true; 16]), false, true),
+            (Word::from([false; 16]), true, false),
+            (Word::from([false; 16]), true, false),
         ];
 
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b, za, zb), &out)| {
-                assert_eq!(alu(a, b, *za, false, *zb, false, true, false), out)
+            .for_each(|(&(a, b, za, zb), &out)| {
+                assert_eq!(
+                    alu(
+                        Word::from(a),
+                        Word::from(b),
+                        za,
+                        false,
+                        zb,
+                        false,
+                        true,
+                        false
+                    ),
+                    out
+                )
             });
     }
 
@@ -508,49 +516,61 @@ mod tests {
             ([true; 16], [true; 16], true, true),
         ];
         let expected = [
-            ([false; 16], true, false),
+            (Word::from([false; 16]), true, false),
             (
-                [
+                Word::from([
                     true, true, true, true, true, true, true, true, true, true, true, true, true,
                     true, true, false,
-                ],
+                ]),
                 false,
                 true,
             ),
-            ([false; 16], true, false),
+            (Word::from([false; 16]), true, false),
             (
-                [
+                Word::from([
                     true, true, true, true, true, true, true, true, true, true, true, true, true,
                     true, true, false,
-                ],
+                ]),
                 false,
                 true,
             ),
             (
-                [
+                Word::from([
                     true, true, true, true, true, true, true, true, true, true, true, true, true,
                     true, true, false,
-                ],
+                ]),
                 false,
                 true,
             ),
-            ([false; 16], true, false),
+            (Word::from([false; 16]), true, false),
             (
-                [
+                Word::from([
                     true, true, true, true, true, true, true, true, true, true, true, true, true,
                     true, true, false,
-                ],
+                ]),
                 false,
                 true,
             ),
-            ([false; 16], true, false),
+            (Word::from([false; 16]), true, false),
         ];
 
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b, na, nb), &out)| {
-                assert_eq!(alu(a, b, false, *na, false, *nb, true, false), out)
+            .for_each(|(&(a, b, na, nb), &out)| {
+                assert_eq!(
+                    alu(
+                        Word::from(a),
+                        Word::from(b),
+                        false,
+                        na,
+                        false,
+                        nb,
+                        true,
+                        false
+                    ),
+                    out
+                )
             });
     }
 }

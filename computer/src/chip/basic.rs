@@ -1,99 +1,42 @@
-#![allow(dead_code)]
+use crate::signal::Signal;
 
-pub const fn nand(a: bool, b: bool) -> bool {
-    !(a && b)
+#[inline]
+pub fn nand<S: Signal>(a: S, b: S) -> S {
+    a.nand(b)
 }
 
-pub const fn nand16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
-    [
-        nand(a[0], b[0]),
-        nand(a[1], b[1]),
-        nand(a[2], b[2]),
-        nand(a[3], b[3]),
-        nand(a[4], b[4]),
-        nand(a[5], b[5]),
-        nand(a[6], b[6]),
-        nand(a[7], b[7]),
-        nand(a[8], b[8]),
-        nand(a[9], b[9]),
-        nand(a[10], b[10]),
-        nand(a[11], b[11]),
-        nand(a[12], b[12]),
-        nand(a[13], b[13]),
-        nand(a[14], b[14]),
-        nand(a[15], b[15]),
-    ]
-}
-
-pub const fn not(input: bool) -> bool {
+#[inline]
+pub fn not<S: Signal>(input: S) -> S {
     nand(input, input)
 }
 
-pub const fn not16(input: &[bool; 16]) -> [bool; 16] {
-    nand16(input, input)
-}
-
-pub const fn and(a: bool, b: bool) -> bool {
+#[inline]
+pub fn and<S: Signal>(a: S, b: S) -> S {
     not(nand(a, b))
 }
 
-pub const fn and16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
-    not16(&nand16(a, b))
-}
-
-pub const fn or(a: bool, b: bool) -> bool {
+#[inline]
+pub fn or<S: Signal>(a: S, b: S) -> S {
     nand(not(a), not(b))
 }
 
-pub const fn or16(a: &[bool; 16], b: &[bool; 16]) -> [bool; 16] {
-    nand16(&not16(a), &not16(b))
-}
-
-pub const fn or8way(input: &[bool; 8]) -> bool {
-    or(
-        or(
-            or(
-                or(or(or(or(input[0], input[1]), input[2]), input[3]), input[4]),
-                input[5],
-            ),
-            input[6],
-        ),
-        input[7],
-    )
-}
-
-pub const fn xor(a: bool, b: bool) -> bool {
+#[inline]
+pub fn xor<S: Signal>(a: S, b: S) -> S {
     let tmp = nand(a, b);
     nand(nand(a, tmp), nand(tmp, b))
 }
 
-pub const fn mux(a: bool, b: bool, selector: bool) -> bool {
+#[inline]
+pub fn mux<S: Signal>(a: S, b: S, selector: bool) -> S {
     // Readable
     // or(and(not(selector), a), and(selector, b))
 
     // Optimal
-    nand(nand(not(selector), a), nand(selector, b))
+    nand(nand(S::from(not(selector)), a), nand(S::from(selector), b))
 }
 
-pub const fn mux16(a: &[bool; 16], b: &[bool; 16], selector: bool) -> [bool; 16] {
-    // Readable
-    // or16(&and16(&[not(selector); 16], a), &and16(&[selector; 16], b))
-
-    // Optimal
-    nand16(
-        &nand16(&[not(selector); 16], a),
-        &nand16(&[selector; 16], b),
-    )
-}
-
-pub const fn mux4way16(
-    a: &[bool; 16],
-    b: &[bool; 16],
-    c: &[bool; 16],
-    d: &[bool; 16],
-    s1: bool,
-    s0: bool,
-) -> [bool; 16] {
+#[inline]
+pub fn mux4way<S: Signal>(a: S, b: S, c: S, d: S, s1: bool, s0: bool) -> S {
     // Readable
     /*
     or16(
@@ -109,31 +52,32 @@ pub const fn mux4way16(
     */
 
     // Optimal
-    or16(
-        &nand16(
-            &nand16(&[and(not(s1), not(s0)); 16], a),
-            &nand16(&[and(not(s1), s0); 16], b),
+    or(
+        nand(
+            nand(S::from(and(not(s1), not(s0))), a),
+            nand(S::from(and(not(s1), s0)), b),
         ),
-        &nand16(
-            &nand16(&[and(s1, not(s0)); 16], c),
-            &nand16(&[and(s1, s0); 16], d),
+        nand(
+            nand(S::from(and(s1, not(s0))), c),
+            nand(S::from(and(s1, s0)), d),
         ),
     )
 }
 
-pub const fn mux8way16(
-    a: &[bool; 16],
-    b: &[bool; 16],
-    c: &[bool; 16],
-    d: &[bool; 16],
-    e: &[bool; 16],
-    f: &[bool; 16],
-    g: &[bool; 16],
-    h: &[bool; 16],
+#[inline]
+pub fn mux8way<S: Signal>(
+    a: S,
+    b: S,
+    c: S,
+    d: S,
+    e: S,
+    f: S,
+    g: S,
+    h: S,
     s2: bool,
     s1: bool,
     s0: bool,
-) -> [bool; 16] {
+) -> S {
     // Readable
     /*
     or16(
@@ -161,59 +105,66 @@ pub const fn mux8way16(
     */
 
     // Optimal
-    or16(
-        &or16(
-            &nand16(
-                &nand16(&[and(not(s2), and(not(s1), not(s0))); 16], a),
-                &nand16(&[and(not(s2), and(not(s1), s0)); 16], b),
+    or(
+        or(
+            nand(
+                nand(S::from(and(not(s2), and(not(s1), not(s0)))), a),
+                nand(S::from(and(not(s2), and(not(s1), s0))), b),
             ),
-            &nand16(
-                &nand16(&[and(not(s2), and(s1, not(s0))); 16], c),
-                &nand16(&[and(not(s2), and(s1, s0)); 16], d),
+            nand(
+                nand(S::from(and(not(s2), and(s1, not(s0)))), c),
+                nand(S::from(and(not(s2), and(s1, s0))), d),
             ),
         ),
-        &or16(
-            &nand16(
-                &nand16(&[and(s2, and(not(s1), not(s0))); 16], e),
-                &nand16(&[and(s2, and(not(s1), s0)); 16], f),
+        or(
+            nand(
+                nand(S::from(and(s2, and(not(s1), not(s0)))), e),
+                nand(S::from(and(s2, and(not(s1), s0))), f),
             ),
-            &nand16(
-                &nand16(&[and(s2, and(s1, not(s0))); 16], g),
-                &nand16(&[and(s2, and(s1, s0)); 16], h),
+            nand(
+                nand(S::from(and(s2, and(s1, not(s0)))), g),
+                nand(S::from(and(s2, and(s1, s0))), h),
             ),
         ),
     )
 }
 
-pub const fn dmux(input: bool, selector: bool) -> (bool, bool) {
-    (and(input, not(selector)), and(input, selector))
-}
-
-pub const fn dmux4way(input: bool, s1: bool, s0: bool) -> (bool, bool, bool, bool) {
+#[inline]
+pub fn dmux<S: Signal>(input: S, selector: bool) -> (S, S) {
     (
-        and(input, and(not(s1), not(s0))),
-        and(input, and(not(s1), s0)),
-        and(input, and(s1, not(s0))),
-        and(input, and(s1, s0)),
+        and(input, S::from(not(selector))),
+        and(input, S::from(selector)),
     )
 }
 
-pub const fn dmux8way(input: bool, s2: bool, s1: bool, s0: bool) -> [bool; 8] {
-    [
-        and(input, and(not(s2), and(not(s1), not(s0)))),
-        and(input, and(not(s2), and(not(s1), s0))),
-        and(input, and(not(s2), and(s1, not(s0)))),
-        and(input, and(not(s2), and(s1, s0))),
-        and(input, and(s2, and(not(s1), not(s0)))),
-        and(input, and(s2, and(not(s1), s0))),
-        and(input, and(s2, and(s1, not(s0)))),
-        and(input, and(s2, and(s1, s0))),
-    ]
+#[inline]
+pub fn dmux4way<S: Signal>(input: S, s1: bool, s0: bool) -> (S, S, S, S) {
+    (
+        and(input, S::from(and(not(s1), not(s0)))),
+        and(input, S::from(and(not(s1), s0))),
+        and(input, S::from(and(s1, not(s0)))),
+        and(input, S::from(and(s1, s0))),
+    )
+}
+
+#[inline]
+pub fn dmux8way<S: Signal>(input: S, s2: bool, s1: bool, s0: bool) -> (S, S, S, S, S, S, S, S) {
+    (
+        and(input, S::from(and(not(s2), and(not(s1), not(s0))))),
+        and(input, S::from(and(not(s2), and(not(s1), s0)))),
+        and(input, S::from(and(not(s2), and(s1, not(s0))))),
+        and(input, S::from(and(not(s2), and(s1, s0)))),
+        and(input, S::from(and(s2, and(not(s1), not(s0))))),
+        and(input, S::from(and(s2, and(not(s1), s0)))),
+        and(input, S::from(and(s2, and(s1, not(s0))))),
+        and(input, S::from(and(s2, and(s1, s0)))),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::signal::Word;
 
     #[test]
     fn nand_returns_true_except_both_inputs_are_true() {
@@ -280,7 +231,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b), &out)| assert_eq!(nand16(a, b), out));
+            .for_each(|(&(a, b), &out)| {
+                assert_eq!(nand(Word::from(a), Word::from(b)), Word::from(out))
+            });
     }
 
     #[test]
@@ -316,7 +269,7 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|(input, &output)| assert_eq!(not16(input), output));
+            .for_each(|(&input, &output)| assert_eq!(not(Word::from(input)), Word::from(output)));
     }
 
     #[test]
@@ -384,7 +337,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b), &out)| assert_eq!(and16(a, b), out));
+            .for_each(|(&(a, b), &out)| {
+                assert_eq!(and(Word::from(a), Word::from(b)), Word::from(out))
+            });
     }
 
     #[test]
@@ -458,28 +413,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b), &out)| assert_eq!(or16(a, b), out));
-    }
-
-    #[test]
-    fn or8way_returns_true_except_all_inputs_are_false() {
-        let inputs = [
-            [false; 8],
-            [false, false, false, false, false, false, false, true],
-            [false, false, false, false, false, false, true, false],
-            [false, false, false, false, false, true, false, false],
-            [false, false, false, false, true, false, false, false],
-            [false, false, false, true, false, false, false, false],
-            [false, false, true, false, false, false, false, false],
-            [false, true, false, false, false, false, false, false],
-            [true, false, false, false, false, false, false, false],
-        ];
-        let expected = [false, true, true, true, true, true, true, true, true];
-
-        inputs
-            .iter()
-            .zip(expected.iter())
-            .for_each(|(input, &output)| assert_eq!(or8way(input), output));
+            .for_each(|(&(a, b), &out)| {
+                assert_eq!(or(Word::from(a), Word::from(b)), Word::from(out))
+            });
     }
 
     #[test]
@@ -535,7 +471,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b, s), &out)| assert_eq!(mux16(a, b, *s), out));
+            .for_each(|(&(a, b, s), &out)| {
+                assert_eq!(mux(Word::from(a), Word::from(b), s), Word::from(out))
+            });
     }
 
     #[test]
@@ -582,8 +520,18 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((a, b, c, d, (s1, s0)), &out)| {
-                assert_eq!(mux4way16(a, b, c, d, *s1, *s0), out)
+            .for_each(|(&(a, b, c, d, (s1, s0)), &out)| {
+                assert_eq!(
+                    mux4way(
+                        Word::from(a),
+                        Word::from(b),
+                        Word::from(c),
+                        Word::from(d),
+                        s1,
+                        s0
+                    ),
+                    Word::from(out)
+                )
             });
     }
 
@@ -703,8 +651,23 @@ mod tests {
         ];
 
         inputs.iter().zip(expected.iter()).for_each(
-            |((a, b, c, d, e, f, g, h, (s2, s1, s0)), &out)| {
-                assert_eq!(mux8way16(a, b, c, d, e, f, g, h, *s2, *s1, *s0), out)
+            |(&(a, b, c, d, e, f, g, h, (s2, s1, s0)), &out)| {
+                assert_eq!(
+                    mux8way(
+                        Word::from(a),
+                        Word::from(b),
+                        Word::from(c),
+                        Word::from(d),
+                        Word::from(e),
+                        Word::from(f),
+                        Word::from(g),
+                        Word::from(h),
+                        s2,
+                        s1,
+                        s0
+                    ),
+                    Word::from(out)
+                )
             },
         );
     }
@@ -767,23 +730,29 @@ mod tests {
             (true, true, true, true),
         ];
         let expected = [
-            [false; 8],
-            [true, false, false, false, false, false, false, false],
-            [false, true, false, false, false, false, false, false],
-            [false, false, true, false, false, false, false, false],
-            [false, false, false, true, false, false, false, false],
-            [false, false, false, false, true, false, false, false],
-            [false, false, false, false, false, true, false, false],
-            [false, false, false, false, false, false, true, false],
-            [false, false, false, false, false, false, false, true],
+            (false, false, false, false, false, false, false, false),
+            (true, false, false, false, false, false, false, false),
+            (false, true, false, false, false, false, false, false),
+            (false, false, true, false, false, false, false, false),
+            (false, false, false, true, false, false, false, false),
+            (false, false, false, false, true, false, false, false),
+            (false, false, false, false, false, true, false, false),
+            (false, false, false, false, false, false, true, false),
+            (false, false, false, false, false, false, false, true),
         ];
 
-        inputs
-            .iter()
-            .zip(expected.iter())
-            .for_each(|(&(input, s2, s1, s0), &expected)| {
-                let output = dmux8way(input, s2, s1, s0);
-                assert_eq!(output, expected);
-            });
+        inputs.iter().zip(expected.iter()).for_each(
+            |(&(input, s2, s1, s0), &(a, b, c, d, e, f, g, h))| {
+                let (aa, bb, cc, dd, ee, ff, gg, hh) = dmux8way(input, s2, s1, s0);
+                assert_eq!(aa, a);
+                assert_eq!(bb, b);
+                assert_eq!(cc, c);
+                assert_eq!(dd, d);
+                assert_eq!(ee, e);
+                assert_eq!(ff, f);
+                assert_eq!(gg, g);
+                assert_eq!(hh, h);
+            },
+        );
     }
 }

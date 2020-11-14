@@ -1,15 +1,16 @@
 use crate::{
     chip::{
-        basic::{and, mux16, not},
+        basic::{and, mux, not},
         mem::Ram16k,
     },
     keyboard::Keyboard,
     screen::Screen,
+    signal::Word,
 };
 
 pub struct Memory<S: Screen, K: Keyboard> {
     address: [bool; 15],
-    ram: Ram16k,
+    ram: Ram16k<Word>,
     screen: S,
     keyboard: K,
 }
@@ -24,19 +25,19 @@ impl<S: Screen, K: Keyboard> Memory<S, K> {
         }
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
-        mux16(
-            &self.ram.get_output(),
-            &mux16(
-                &self.screen.get_output(),
-                &self.keyboard.get_output(),
+    pub fn get_output(&self) -> Word {
+        mux(
+            self.ram.get_output(),
+            mux(
+                self.screen.get_output(),
+                self.keyboard.get_output(),
                 self.address[1],
             ),
             self.address[0],
         )
     }
 
-    pub fn tick(&mut self, address: &[bool; 15], load: bool, input: &[bool; 16]) {
+    pub fn tick(&mut self, address: &[bool; 15], load: bool, input: Word) {
         self.address = *address;
         self.ram.tick(
             &[
@@ -158,15 +159,9 @@ mod tests {
         inputs
             .iter()
             .zip(expected.iter())
-            .for_each(|((input, address), &output)| {
-                mem.tick(address, true, input);
-                assert_eq!(
-                    mem.get_output(),
-                    output,
-                    "input: {:?}, address: {:?}",
-                    input,
-                    address
-                );
+            .for_each(|(&(input, address), &output)| {
+                mem.tick(&address, true, Word::from(input));
+                assert_eq!(mem.get_output(), Word::from(output));
             });
     }
 }
