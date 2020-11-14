@@ -2,10 +2,10 @@ use std::collections::VecDeque;
 
 use winit::event::{ElementState, KeyboardInput, ModifiersState, VirtualKeyCode};
 
-use crate::{chip::mem::Register, keyboard::Keyboard};
+use crate::{chip::mem::Register, keyboard::Keyboard, signal::Word};
 
 pub struct WinitKeyboard {
-    register: Register,
+    register: Register<Word>,
     states: VecDeque<VirtualKeyCode>,
     modifiers: ModifiersState,
 }
@@ -21,7 +21,7 @@ impl Keyboard for WinitKeyboard {
         }
     }
 
-    fn get_output(&self) -> [bool; 16] {
+    fn get_output(&self) -> Word {
         self.register.get_output()
     }
 
@@ -35,8 +35,8 @@ impl Keyboard for WinitKeyboard {
                         self.states.remove(pos);
                     }
                     self.states.push_front(virtual_keycode);
-                    if let Some(bits) = code_to_bits(virtual_keycode) {
-                        self.register.tick(true, &bits);
+                    if let Some(bits) = code_to_word(virtual_keycode) {
+                        self.register.tick(true, bits);
                     }
                 }
                 ElementState::Released => {
@@ -46,8 +46,8 @@ impl Keyboard for WinitKeyboard {
                         self.states.remove(pos);
                         if pos == 0 {
                             if let Some(code) = self.states.pop_front() {
-                                if let Some(bits) = code_to_bits(code) {
-                                    self.register.tick(true, &bits);
+                                if let Some(bits) = code_to_word(code) {
+                                    self.register.tick(true, bits);
                                 }
                             }
                         }
@@ -58,7 +58,7 @@ impl Keyboard for WinitKeyboard {
     }
 }
 
-const fn code_to_bits(keycode: VirtualKeyCode) -> Option<[bool; 16]> {
+fn code_to_word(keycode: VirtualKeyCode) -> Option<Word> {
     let code = match keycode {
         VirtualKeyCode::Space => 32,
         // Exclamation mark is not supported
@@ -157,23 +157,6 @@ const fn code_to_bits(keycode: VirtualKeyCode) -> Option<[bool; 16]> {
     if code == 0 {
         None
     } else {
-        Some([
-            (code >> 15) & 1 == 1,
-            (code >> 14) & 1 == 1,
-            (code >> 13) & 1 == 1,
-            (code >> 12) & 1 == 1,
-            (code >> 11) & 1 == 1,
-            (code >> 10) & 1 == 1,
-            (code >> 9) & 1 == 1,
-            (code >> 8) & 1 == 1,
-            (code >> 7) & 1 == 1,
-            (code >> 6) & 1 == 1,
-            (code >> 5) & 1 == 1,
-            (code >> 4) & 1 == 1,
-            (code >> 3) & 1 == 1,
-            (code >> 2) & 1 == 1,
-            (code >> 1) & 1 == 1,
-            (code >> 0) & 1 == 1,
-        ])
+        Some(Word::from(code))
     }
 }

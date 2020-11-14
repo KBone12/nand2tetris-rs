@@ -5,15 +5,17 @@ use std::{
     path::Path,
 };
 
+use crate::signal::{Signal, Word};
+
 pub struct Rom {
-    data: [[bool; 16]; 32768],
+    data: [Word; 32768],
     address: usize,
 }
 
 impl Rom {
     pub fn new() -> Self {
         Self {
-            data: [[false; 16]; 32768],
+            data: [Word::zero(); 32768],
             address: 0,
         }
     }
@@ -23,17 +25,9 @@ impl Rom {
         let mut bits = reader
             .lines()
             .filter_map(|line| line.ok())
-            .map(|line| {
-                line.trim()
-                    .chars()
-                    .map(|b| b == '1')
-                    .collect::<Vec<_>>()
-                    .as_slice()
-                    .try_into()
-                    .unwrap()
-            })
+            .map(|line| Word::from(u16::from_str_radix(line.trim(), 2).unwrap()))
             .collect::<Vec<_>>();
-        bits.extend_from_slice(&vec![[false; 16]; 32768 - bits.len()]);
+        bits.extend_from_slice(&vec![Word::zero(); 32768 - bits.len()]);
         let bits = bits.as_slice().try_into().unwrap();
         Ok(Self {
             data: bits,
@@ -59,7 +53,7 @@ impl Rom {
             | address[14] as usize;
     }
 
-    pub fn get_output(&self) -> [bool; 16] {
+    pub fn get_output(&self) -> Word {
         self.data[self.address]
     }
 }
