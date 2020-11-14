@@ -169,16 +169,4 @@ mod tests {
                 );
             });
     }
-
-    #[test]
-    #[should_panic]
-    fn memory_fail_to_access_0x6001() {
-        let address = [
-            true, true, false, false, false, false, false, false, false, false, false, false,
-            false, false, true,
-        ];
-        let mut mem = Memory::<DummyScreen, DummyKeyboard>::new();
-
-        mem.tick(&address, false, &[false; 16]);
-    }
 }
