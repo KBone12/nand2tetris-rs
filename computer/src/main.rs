@@ -19,17 +19,10 @@ use winit::{
     window::WindowBuilder,
 };
 
-mod chip;
-mod computer;
-use computer::Computer;
-mod cpu;
-mod keyboard;
-use keyboard::winit::WinitKeyboard as Keyboard;
-mod memory;
-mod rom;
-use rom::Rom;
-mod screen;
-use screen::wgpu::WgpuScreen as Screen;
+use computer::{
+    keyboard::winit::WinitKeyboard as Keyboard, rom::Rom, screen::wgpu::WgpuScreen as Screen,
+    Computer,
+};
 
 async fn run() {
     let mut computer = Computer::<Screen, Keyboard>::new();

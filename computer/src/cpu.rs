@@ -81,6 +81,18 @@ impl Cpu {
             a[14], a[15],
         ];
     }
+
+    pub fn a(&self) -> [bool; 16] {
+        self.a.get_output()
+    }
+
+    pub fn d(&self) -> [bool; 16] {
+        self.d.get_output()
+    }
+
+    pub fn pc(&self) -> [bool; 16] {
+        self.pc.get_output()
+    }
 }
 
 #[cfg(test)]

@@ -12,5 +12,5 @@ layout(set = 0, binding = 0) uniform Window {
 
 void main() {
     vertex_color = instance_color;
-    gl_Position = vec4((position + instance_offset) / window_size, 0.0, 1.0);
+    gl_Position = vec4(2.0 * (position + instance_offset) / window_size, 0.0, 1.0);
 }
